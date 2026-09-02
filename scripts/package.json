@@ -1,0 +1,13 @@
+{
+  "name": "cofiblocks-stellar-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Herramientas de entorno para la migración a Stellar",
+  "scripts": {
+    "verify:constants": "node verify-stellar-constants.mjs",
+    "setup:testnet": "./setup-testnet.sh"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^17.0.1"
+  }
+}

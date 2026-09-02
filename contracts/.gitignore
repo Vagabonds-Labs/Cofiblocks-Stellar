@@ -1,8 +1,6 @@
 target
-.snfoundry_cache/
 .env
-local-devnet
 node_modules/
-.tool-versions
+test_snapshots/
 
 .DS_Store

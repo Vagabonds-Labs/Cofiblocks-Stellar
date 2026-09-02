@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = ["interfaces", "marketplace", "distribution"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+soroban-sdk = "27.0.6"
+cofiblocks-interfaces = { path = "interfaces" }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
+# Perfil usado por `stellar contract build` para artefactos de release con debug info.
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true

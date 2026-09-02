@@ -1,0 +1,22 @@
+{
+  "network": "testnet",
+  "networkPassphrase": "Test SDF Network ; September 2015",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "Distribution": {
+    "contract": "Distribution",
+    "address": "CAWOXN2MYZJWBDU6RCGIEB44W3LNIEPM66W6JQA6UUZ5KUBKKBHERSEB",
+    "wasmHash": "397524cb85123ac490f8656701f79bbbbd2aaadf8145b816b3cf4ecfed5ea0cf"
+  },
+  "Marketplace": {
+    "contract": "Marketplace",
+    "address": "CC4HU6XKNG5PUYTNTTGCRGLGZG4X6FKUUHARA4GTKB4MKFK76KOOCEOG",
+    "wasmHash": "f4250acf2b6a021cf315dab186abedc5ea5862e6434a3acf7007bb29b8122415",
+    "marketFeeBps": 5000
+  },
+  "USDC": {
+    "contract": "USDC",
+    "address": "CDYIMMPF6SUKZWCHWIQ6ZGKYQ2KFOLUXL42Y5A6RWLMY7DB4RNVAHZJF",
+    "issuer": "GBKTOBQYPPUT2PC6YGVCEMPS5NXQ6K6I2Q5SIE6I56G7QT5CDGSTHSHF",
+    "decimals": 7
+  }
+}

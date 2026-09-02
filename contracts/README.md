@@ -1,65 +1,101 @@
-# CofiBlocks Contracts
+# Contratos de CofiBlocks (Soroban)
 
-## Deployment Guide
+Dos contratos en Rust sobre Stellar/Soroban:
 
-Follow these steps to deploy the CofiBlocks contracts on the StarkNet network.
+| Contrato | Qué hace |
+|---|---|
+| `marketplace` | Roles, productos, stock, compra en lote, saldos de vendedor y claims del reparto. |
+| `distribution` | Registra las compras y reparte las utilidades de a páginas. |
 
-### 1. Configure the `.env` file
+`interfaces` es un crate compartido con los tipos y el cliente que el marketplace
+usa para invocar a `distribution`, sin arrastrar su implementación al WASM.
 
-Set the following environment variables in your `.env` file with the details of a prefunded wallet. This wallet will act as the admin address:
+## Lo que ya no existe
 
-- **`PRIVATE_KEY_MAINNET`** – The private key of the admin wallet.
-- **`ACCOUNT_ADDRESS_MAINNET`** – The address of the admin wallet.
-- **`TOKEN_METADATA_URL`** – The IPFS URL to serve as the token metadata.
-- **`RPC_URL_MAINNET`** – The rpc url to use to connect to the starknet network.
-  
-  The Token Metadata URL should follow the format: `ipfs://<CID>/{id}.json`, where `{id}` will be dynamically replaced with the actual token ID by clients when fetching metadata.
-  
-  **Example:**
-  ```
-  ipfs://bafybeihevtihdmcjkdh6sjdtkbdjnngbfdlr3tjk2dfmvd3demdm57o3va/{id}.json
-  ```
-  For token ID `1`, the resulting URL will be:
-  ```
-  ipfs://bafybeihevtihdmcjkdh6sjdtkbdjnngbfdlr3tjk2dfmvd3demdm57o3va/1.json
-  ```
+La versión Starknet tenía cuatro contratos. Se cayeron dos:
 
-### 2. Install dependencies
+- **`cofi_collection` (ERC-1155).** Soroban no tiene equivalente multi-token y se
+  decidió no escribirlo. El stock vive en `ListedProduct` dentro del marketplace;
+  el NFT era una representación paralela. Con él se van el base URI, el metadata
+  IPFS, `TOKEN_METADATA_URL` y el paso post-deploy `set_minter`.
+- **`swap` (Ekubo).** Sólo se paga en USDC.
 
-Run the following command to install project dependencies:
+## Requisitos
+
 ```bash
-bun i
+cargo install --locked stellar-cli   # 28.x
+rustup target add wasm32v1-none
 ```
 
-### 3. Deploy the contracts
+## Test
 
-To deploy the contracts on mainnet, run:
 ```bash
-bun deploy
+cargo test --workspace
 ```
 
-This command will:
-- Deploy contracts **CofiCollections**, **Marketplace** and **Distribution**.
-- Set the **Marketplace** contract as the minter in the **CofiCollection** contract.
-- Set the distribution contract on Marketplace.
-- Set the `base_uri` in the **CofiCollection** contract using the `TOKEN_METADATA_URL` value from the `.env` file.
+`Env::default()` enforcea los límites de recursos de mainnet, así que la suite
+falla si un contrato se vuelve demasiado pesado para la red.
 
-### 4. Retrieve deployed contract addresses
+## Build
 
-Once the deployment is complete, the contract addresses will be available in:
-- The terminal output.
-- The file located at: `deployments/deployedContracts.ts`.
-
-
-## Testing
-To test the contracts, follow these steps.
-
-1. Go to contracts folder
 ```bash
-cd contracts
+stellar contract build
 ```
 
-2. Run test command
+Deja los WASM en `target/wasm32v1-none/release/`.
+
+## Despliegue
+
+Primero, el entorno de testnet — identidades, fondeo, trustlines y un USDC de
+prueba con los mismos 7 decimales que el real:
+
 ```bash
-scarb test
+../scripts/setup-testnet.sh
 ```
+
+Después:
+
+```bash
+./scripts/deploy.sh testnet
+./scripts/deploy.sh mainnet
+```
+
+El script compila, sube y despliega los dos contratos, enlaza `distribution` con
+el marketplace (`set_marketplace`) y escribe `deployments/<network>.json` con el
+mismo formato que consume `getContractAddress()` en el backend.
+
+Variables opcionales: `STELLAR_ADMIN_IDENTITY` (por defecto `cofi-admin`),
+`MARKET_FEE_BPS` (por defecto `5000`, o sea 50 %), `USDC_ISSUER`.
+
+En **mainnet** se usa el USDC de Circle
+(`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`), verificado en
+7 decimales. En **testnet** se usa un activo propio: el de Circle no lo podemos
+emitir.
+
+## Recorrido punta a punta
+
+```bash
+./scripts/e2e-testnet.sh
+```
+
+Rol → publicar → comprar → cobrar → repartir → reclamar, todo on-chain y con los
+saldos verificados. Es el criterio de aceptación del despliegue.
+
+## Notas de diseño
+
+- **Una sola invocación por transacción.** Stellar admite un único
+  `InvokeHostFunction` por transacción, así que el multicall del checkout
+  (`approve` + N × `buy_product` + `transfer` del envío) se colapsó en
+  `buy_products(buyer, token_ids, amounts, delivery_fee)`.
+- **Sin `approve`.** La autorización viaja por el árbol de invocación: el
+  marketplace hace `usdc.transfer(&buyer, …)` y el `require_auth()` del comprador
+  queda cubierto por la firma de la transacción.
+- **`i128` y 7 decimales.** USDC en Stellar es un activo clásico. Se fue el par
+  `low`/`high` de `u256`.
+- **Eventos legibles.** Topics con símbolos y datos indexados por nombre de
+  campo (`#[contractevent]`), en vez de selectores hexadecimales.
+- **Reparto paginado.** `distribute(cursor, limit)` congela un *epoch* al
+  arrancar: las compras que entran durante el reparto se acumulan en el epoch
+  siguiente y no interfieren.
+- **TTL.** Toda escritura extiende el TTL de la entrada. `touch_product` permite
+  al panel admin evitar que un producto inactivo se archive.

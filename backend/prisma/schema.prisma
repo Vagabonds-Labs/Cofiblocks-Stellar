@@ -1,0 +1,258 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                    String         @id @default(uuid())
+  name                  String?
+  email                 String?
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+  sellerType            SellerType?    @map("seller_type")
+  isAdmin               Boolean        @default(false) @map("is_admin")
+  walletAddress         String?        @map("wallet_address")
+  walletProvider        String?        @map("wallet_provider")
+  ownedFarms            Farm[]
+  notificationsReceived Notification[] @relation("NotificationReceiver")
+  notificationsSent     Notification[] @relation("NotificationSender")
+  orders                Order[]
+  productTransactions   ProductTx[]
+  products              Product[]
+  refreshTokens         RefreshToken[]
+  sessions              Session[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  sessionId String?  @unique @map("session_id")
+  session   Session? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Session {
+  id           String        @id @default(uuid())
+  userId       String        @map("user_id")
+  ipAddress    String?       @map("ip_address")
+  userAgent    String?       @map("user_agent")
+  deviceInfo   String?       @map("device_info")
+  isActive     Boolean       @default(true) @map("is_active")
+  lastActivity DateTime      @default(now()) @updatedAt @map("last_activity")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  expiresAt    DateTime      @map("expires_at")
+  refreshToken RefreshToken?
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Notification {
+  id         String            @id @default(uuid())
+  receiverId String            @map("receiver_id")
+  senderId   String?           @map("sender_id")
+  key        String
+  arguments  String[]          @default([])
+  level      NotificationLevel
+  readAt     DateTime?         @map("read_at")
+  createdAt  DateTime          @default(now()) @map("created_at")
+  logs       String?
+  receiver   User              @relation("NotificationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender     User?             @relation("NotificationSender", fields: [senderId], references: [id])
+
+  @@map("notifications")
+}
+
+model Farm {
+  id          String      @id @default(uuid())
+  name        String
+  sales       Int
+  region      String
+  country     String
+  altitude    Int
+  coordinates String
+  website     String?
+  logoUrl     String      @map("logo_url")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  ownerId     String?     @map("owner_id")
+  owner       User?       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@map("farms")
+}
+
+model Product {
+  id              String         @id @default(uuid())
+  tokenId         String?        @map("token_id")
+  contractAddress String         @map("contract_address")
+  network         String
+  title           String
+  description     String?
+  roastLevel      String         @map("roast_level")
+  price           Float
+  currentStock    Int            @map("current_stock")
+  imageUrl        String?        @map("image_url")
+  farmId          String         @map("farm_id")
+  ownerId         String         @map("owner_id")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  status          ProductStatus  @default(CREATION_REQUEST)
+  sales           Int            @default(0)
+  grindType       GrindType?     @map("grind_type")
+  reservedStock   Int            @default(0) @map("reserved_stock")
+  orderItems      OrderItem[]
+  transactions    ProductTx[]
+  stripeProducts  StripeProduct[]
+  farm            Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  owner           User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@map("products")
+}
+
+model Order {
+  id            String        @id @default(uuid())
+  buyerId       String        @map("buyer_id")
+  status        OrderStatus
+  createdAt     DateTime      @default(now()) @map("created_at")
+  expiresAt     DateTime      @map("expires_at")
+  paymentTx     String?       @map("payment_tx")
+  deliveryId    String?       @map("delivery_id")
+  stripePaymentId String?     @map("stripe_payment_id")
+  orderItems    OrderItem[]
+  buyer         User          @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  delivery      Delivery?     @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id                   String  @id @default(uuid())
+  orderId              String  @map("order_id")
+  productId            String  @map("product_id")
+  delivered            Boolean @default(false)
+  items                Int
+  producerClaimBalance Float   @default(0) @map("producer_claim_balance")
+  sellerClaimTx        String? @map("seller_claim_tx")
+  order                Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product              Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model StripeProduct {
+  id                String    @id @default(uuid())
+  stripeProductId   String    @map("stripe_product_id")
+  stripePriceId     String    @map("stripe_price_id")
+  productId         String    @map("product_id")
+  stripePriceActive Boolean   @default(true) @map("stripe_price_active")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("stripe_products")
+}
+
+model ProductTx {
+  id        String        @id @default(uuid())
+  productId String        @map("product_id")
+  txType    ProductTxType @map("tx_type")
+  senderId  String        @map("sender_id")
+  txHash    String        @map("tx_hash")
+  createdAt DateTime      @default(now()) @map("created_at")
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sender    User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("product_tx")
+}
+
+model CofiblocksEvent {
+  id          String     @id @default(uuid())
+  title       String
+  location    String?
+  description String?
+  startAt     DateTime   @db.Timestamptz @map("start_at")
+  endAt       DateTime   @db.Timestamptz @map("end_at")
+  isAllDay    Boolean?   @map("is_all_day")
+  timezone    String
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  urlImage    String?    @map("url_image")
+  deliveries  Delivery[]
+
+  @@map("cofiblocks_events")
+}
+
+model Delivery {
+  id            String           @id @default(uuid())
+  method        DeliveryMethod
+  paymentTxHash String?          @map("payment_tx_hash")
+  eventId       String?          @map("event_id")
+  price         Float?
+  country       String?
+  state         String?
+  city          String?
+  address1      String?          @map("address_1")
+  address2      String?          @map("address_2")
+  name          String?
+  phone         String?
+  event         CofiblocksEvent? @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  orders        Order[]
+
+  @@map("deliveries")
+}
+
+enum SellerType {
+  PRODUCER
+  ROASTER
+}
+
+enum NotificationLevel {
+  WARNING
+  INFO
+  ERROR
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  CANCELLED
+  PENDING_DELIVERY_PAYMENT
+  IN_DELIVERY
+  DELIVERED
+}
+
+enum ProductStatus {
+  CREATION_REQUEST
+  PUBLISHED
+  HIDDEN
+  CREATION_CANCELLED
+}
+
+enum ProductTxType {
+  CREATE
+  ADD_STOCK
+  BUY
+  PAY_DELIVERY
+}
+
+enum GrindType {
+  WHOLE
+  GROUND
+}
+
+enum DeliveryMethod {
+  EVENT
+  HOME
+}

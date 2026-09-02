@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-manrope: "Manrope";
+    --cb-bg-start: 246 244 240;
+    --cb-bg-mid: 241 246 243;
+    --cb-bg-end: 233 241 236;
+    --cb-surface: 255 255 255;
+    --cb-surface-soft: 248 250 247;
+    --cb-border: 211 220 214;
+    --cb-text: 24 33 29;
+    --cb-muted: 90 103 96;
+    --cb-primary: 40 107 86;
+    --cb-primary-strong: 25 82 64;
+    --cb-accent: 227 153 60;
+    --cb-danger: 185 52 45;
+  }
+
+  * {
+    @apply border-slate-200;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    color: rgb(var(--cb-text));
+    background:
+      radial-gradient(circle at 20% -10%, rgba(255, 255, 255, 0.65), transparent 40%),
+      radial-gradient(circle at 90% 0%, rgba(220, 236, 228, 0.55), transparent 38%),
+      linear-gradient(170deg, rgb(var(--cb-bg-start)) 0%, rgb(var(--cb-bg-mid)) 42%, rgb(var(--cb-bg-end)) 100%);
+    min-height: 100vh;
+    font-family: var(--font-manrope), sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    @apply outline-none;
+  }
+}
+
+@layer components {
+  .app-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-white/70 shadow-[0_10px_30px_rgba(22,40,30,0.07)] bg-white/85 backdrop-blur;
+  }
+
+  .soft-card {
+    background-color: rgb(var(--cb-surface-soft));
+    border: 1px solid rgba(var(--cb-border), 0.7);
+    @apply rounded-xl;
+  }
+
+  .field-input {
+    border: 1px solid rgba(var(--cb-border), 0.95);
+    background: rgba(var(--cb-surface), 0.95);
+    color: rgb(var(--cb-text));
+    @apply w-full rounded-xl px-4 py-2.5 transition-all duration-200;
+  }
+
+  .field-input::placeholder {
+    color: rgba(var(--cb-muted), 0.8);
+  }
+
+  .field-input:focus {
+    border-color: rgba(var(--cb-primary), 0.5);
+    box-shadow: 0 0 0 4px rgba(var(--cb-primary), 0.12);
+  }
+
+  .btn-primary {
+    background: linear-gradient(145deg, rgb(var(--cb-primary)) 0%, rgb(var(--cb-primary-strong)) 100%);
+    color: white;
+    @apply rounded-xl px-4 py-2.5 font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    background: rgba(var(--cb-surface), 0.92);
+    border: 1px solid rgba(var(--cb-border), 0.95);
+    color: rgb(var(--cb-text));
+    @apply rounded-xl px-4 py-2.5 font-medium transition-all duration-200 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-danger {
+    background: rgba(var(--cb-danger), 0.1);
+    border: 1px solid rgba(var(--cb-danger), 0.35);
+    color: rgb(var(--cb-danger));
+    @apply rounded-xl px-4 py-2.5 font-medium transition-all duration-200;
+  }
+
+  .btn-danger:hover {
+    background: rgba(var(--cb-danger), 0.16);
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+
+  .chip-warm {
+    background: rgba(var(--cb-accent), 0.16);
+    color: rgb(123 72 20);
+  }
+
+  .chip-neutral {
+    background: rgba(var(--cb-border), 0.32);
+    color: rgb(var(--cb-muted));
+  }
+}
+
+.menu-item {
+  @apply flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm rounded-lg
+         transition-all duration-200;
+}
+
+.menu-item:hover {
+  background: rgba(var(--cb-primary), 0.16);
+}
+
+.menu-item-danger:hover {
+  background: rgba(var(--cb-danger), 0.16);
+}

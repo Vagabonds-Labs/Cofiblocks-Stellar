@@ -544,14 +544,16 @@
 		"distributing": "Distribuindo...",
 		"confirm_distribute": "Tem certeza de que deseja distribuir? Esta ação distribuirá os lucros aos vendedores.",
 		"error_distribute": "Falha ao distribuir",
-		"distribute_coming_soon": "A funcionalidade de distribuição será implementada em breve",
 		"restore_title": "Restaurar produto arquivado",
 		"restore_help": "O Soroban arquiva o estado que fica muito tempo sem ser tocado. Se um produto inativo começar a falhar, estenda seu TTL com o token ID.",
 		"restore_placeholder": "Token ID do produto",
 		"button_restore": "Restaurar",
 		"restoring": "Restaurando...",
 		"restore_success": "TTL estendido. Transação:",
-		"touch_error": "Não foi possível restaurar o produto"
+		"touch_error": "Não foi possível restaurar o produto",
+		"distribute_progress": "Distribuindo… {pages} páginas confirmadas, conta {cursor}.",
+		"distribute_done": "Distribuição concluída em {pages} páginas.",
+		"distribute_resumable": "Há uma distribuição pela metade do epoch {epoch}, parada na conta {cursor}. Execute novamente para terminá-la."
 	},
 	"admin_events": {
 		"title": "Eventos",
@@ -606,5 +608,15 @@
 			"button_deleting": "Excluindo...",
 			"confirm_delete": "Tem certeza de que deseja excluir este evento? Esta ação não pode ser desfeita."
 		}
+	},
+	"distribution": {
+		"title": "A sua parte",
+		"help": "A CofiBlocks divide parte do lucro com quem torna o café possível. Esta é a sua parte, resgate quando quiser.",
+		"role_consumer": "Como coffee lover",
+		"role_producer": "Como produtor",
+		"role_roaster": "Como torrefador",
+		"button_claim": "Resgatar",
+		"claiming": "Resgatando...",
+		"claim_success": "Resgatado. Transação:"
 	}
 }

@@ -66,3 +66,22 @@ export const submitSignedSchema = z.object({
     signed_xdr: z.string().min(1, 'Signed transaction XDR is required'),
   }),
 });
+
+/**
+ * Roles que un usuario puede reclamar por sí mismo. Los institucionales
+ * (CAMBIATUS, COFIBLOCKS, COFOUNDER) se cobran fuera de la app.
+ */
+const selfClaimableRoles = [ROLES.CONSUMER, ROLES.PRODUCER, ROLES.ROASTER] as const;
+
+export const distributionClaimSchema = z.object({
+  query: z.object({
+    role: z.enum(selfClaimableRoles),
+  }),
+});
+
+export const distributionClaimCallbackSchema = z.object({
+  body: z.object({
+    role: z.enum(selfClaimableRoles),
+    signed_xdr: z.string().min(1, 'Signed transaction XDR is required'),
+  }),
+});

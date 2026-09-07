@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 
 import { useUser } from '@/lib/providers/UserProvider'
 import { useProfileForm, useBalances, useFundingActions } from '@/hooks'
-import { ProfileForm, BalancesSection, FundingSection, TrustlineNotice } from '@/components/profile'
+import { ProfileForm, BalancesSection, FundingSection, TrustlineNotice, DistributionClaims } from '@/components/profile'
 
 export default function ProfilePage() {
   const t = useTranslations()
@@ -67,6 +67,13 @@ export default function ProfilePage() {
 
         {/* BALANCES */}
         <BalancesSection balances={balances} user={user} t={t} />
+
+        {/* Lo que le toca al usuario del reparto de utilidades, si hay algo. */}
+        <DistributionClaims
+          walletAddress={user?.walletAddress ?? null}
+          onClaimed={balances.fetchBalances}
+          t={t}
+        />
 
         {/* FUNDING BUTTONS */}
         <div className="grid grid-cols-1 gap-4 mt-8">

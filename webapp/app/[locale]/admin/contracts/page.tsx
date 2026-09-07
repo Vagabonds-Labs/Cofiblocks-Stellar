@@ -27,6 +27,8 @@ export default function ManageContractsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [distributing, setDistributing] = useState(false)
+  const [distributeProgress, setDistributeProgress] = useState<string | null>(null)
+  const [distributeError, setDistributeError] = useState<string | null>(null)
 
   // Restauración de productos archivados por el state archival de Soroban.
   const [touchTokenId, setTouchTokenId] = useState('')
@@ -89,18 +91,37 @@ export default function ManageContractsPage() {
     }
   }, [user?.isAdmin])
 
+  /**
+   * El reparto va de a páginas: el contrato corta por presupuesto de recursos
+   * y el backend corta por request. Se llama en bucle hasta que devuelve
+   * `done`, mostrando el avance para que no parezca colgado.
+   */
   const handleDistribute = async () => {
     if (!confirm(t('admin_contracts.confirm_distribute'))) {
       return
     }
 
     setDistributing(true)
+    setDistributeError(null)
+    setDistributeProgress(null)
+
+    let pages = 0
     try {
-      // TODO: Implement distribute endpoint call
-      // await onchainService.distribute()
-      alert(t('admin_contracts.distribute_coming_soon'))
+      for (;;) {
+        const result = await onchainService.runDistribution()
+        pages += result.pages
+
+        if (result.done) {
+          setDistributeProgress(t('admin_contracts.distribute_done', { pages }))
+          break
+        }
+        setDistributeProgress(
+          t('admin_contracts.distribute_progress', { pages, cursor: result.run?.cursor ?? 0 })
+        )
+      }
+      await fetchContractsInfo()
     } catch (err) {
-      alert(err instanceof Error ? err.message : t('admin_contracts.error_distribute'))
+      setDistributeError(err instanceof Error ? err.message : t('admin_contracts.error_distribute'))
     } finally {
       setDistributing(false)
     }
@@ -299,6 +320,23 @@ export default function ManageContractsPage() {
               t('admin_contracts.button_distribute')
             )}
           </button>
+
+          {/* Un reparto que quedó a medias se retoma solo: el cursor vive en el contrato. */}
+          {contractsInfo.distribution.run && !distributing && (
+            <p className="mt-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              {t('admin_contracts.distribute_resumable', {
+                epoch: contractsInfo.distribution.run.epoch,
+                cursor: contractsInfo.distribution.run.cursor,
+              })}
+            </p>
+          )}
+
+          {distributeProgress && (
+            <p className="mt-3 text-sm text-gray-700">{distributeProgress}</p>
+          )}
+          {distributeError && (
+            <p className="mt-3 text-sm text-red-700">{distributeError}</p>
+          )}
         </div>
       </div>
     </div>

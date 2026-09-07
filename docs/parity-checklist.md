@@ -314,6 +314,39 @@ Levantar el entorno de testnet (identidades, fondeo, trustlines a USDC):
 - `register_purchase` sigue siendo invocado por el marketplace (rol MARKETPLACE).
 - Se elimina el `ERC1155Receiver`.
 
+> **Este flujo nunca fue ejecutable desde la aplicación — ahora sí lo es.**
+>
+> En la versión Starknet el botón del panel era un `// TODO` que mostraba
+> "coming soon" y no existía ninguna ruta (verificado contra el commit inicial).
+> El contrato se portó con la migración; el cableado se agregó después.
+
+**Cómo quedó**
+
+| Pieza | Dónde |
+|---|---|
+| `POST /api/onchain/distribution/run` (admin) | Avanza el reparto de a páginas y devuelve `{done, pages, txHashes, run}` |
+| `GET /api/onchain/distribution/claim_balance` | Saldos del usuario, uno por rol que tiene |
+| `GET /api/onchain/distribution/claim?role=` | XDR para que el usuario firme su reclamo |
+| `POST /api/onchain/distribution/claim/callback` | Envía el firmado y revalida que el saldo quedó en 0 |
+| `OnChainDistributionService` | Bucle de paginación, validación de rol y de saldo |
+| Panel admin | Llama en bucle hasta `done`, muestra avance y avisa si quedó un reparto a medias |
+| `DistributionClaims` en el perfil | Aparece sólo si hay algo que cobrar; una fila por rol |
+
+**Decisiones de diseño**
+
+- **El progreso se relee de la cadena** (`get_run`) en vez de confiar en el valor
+  de retorno del submit: es la misma fuente que el contrato usa para validar el
+  cursor, así que no pueden desincronizarse.
+- **5 páginas por request.** Cada página es una transacción confirmada, así que
+  el corte es un presupuesto de tiempo contra el timeout del proxy. El frontend
+  vuelve a llamar hasta terminar y el cursor vive en el contrato, así que un
+  request cortado por el medio se retoma sin perder ni duplicar pagos.
+- **Sólo CONSUMER, PRODUCER y ROASTER se reclaman desde la app.** Los roles
+  institucionales (CAMBIATUS, COFIBLOCKS, COFOUNDER) se cobran fuera; el backend
+  los rechaza con `ROLE_NOT_SELF_CLAIMABLE`.
+- **El usuario firma su propio reclamo**: el contrato transfiere el USDC al
+  `caller`, así que la autorización tiene que ser suya, no del backend.
+
 **Criterios de aceptación**
 - [ ] Con 3 coffee lovers, 2 productores y 1 tostador, el reparto da exactamente lo mismo
       que la implementación Cairo (test de referencia numérica).
@@ -470,6 +503,8 @@ WASM desplegado, que es la única medición que incluye el costo de la VM.
 | Restauración expuesta en el panel admin | ✅ | `onchainService.touchProduct()` y sección en `admin/contracts` |
 | Máximo de ítems medido y aplicado en el carrito | ✅ | `MAX_CART_ITEMS = 16` en `cartStore`, alineado con `MAX_ITEMS_PER_PURCHASE` del contrato; `addItem` devuelve `false` y la UI explica el motivo |
 | Copy de wallets corregido | ✅ | ArgentX/Braavos (Starknet) → Freighter, xBull, Albedo, Lobstr |
+| Reparto de utilidades cableado | ✅ | 4 rutas nuevas, `OnChainDistributionService`, panel admin y `DistributionClaims` en el perfil. Ver flujo 10 |
+| `.env.example` completo | ✅ | Faltaban `BACKEND_URL`, `ALLOW_CROSS_DOMAIN_COOKIES`, `ADMIN_EMAILS` y las tres de Supabase |
 
 ### Fase 7 — lo que falta, y por qué no se puede cerrar desde el código
 

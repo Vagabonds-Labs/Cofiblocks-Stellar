@@ -543,14 +543,16 @@
 		"distributing": "Distributing...",
 		"confirm_distribute": "Are you sure you want to distribute? This action will distribute profits to sellers.",
 		"error_distribute": "Failed to distribute",
-		"distribute_coming_soon": "Distribute functionality will be implemented soon",
 		"restore_title": "Restore archived product",
 		"restore_help": "Soroban archives state that goes untouched for long enough. If an inactive product starts failing, extend its TTL with the token ID.",
 		"restore_placeholder": "Product token ID",
 		"button_restore": "Restore",
 		"restoring": "Restoring...",
 		"restore_success": "TTL extended. Transaction:",
-		"touch_error": "Could not restore the product"
+		"touch_error": "Could not restore the product",
+		"distribute_progress": "Distributing… {pages} pages confirmed, account {cursor}.",
+		"distribute_done": "Distribution completed in {pages} pages.",
+		"distribute_resumable": "A distribution for epoch {epoch} is half done, stopped at account {cursor}. Run it again to finish it."
 	},
 	"admin_events": {
 		"title": "Events",
@@ -605,5 +607,15 @@
 			"button_deleting": "Deleting...",
 			"confirm_delete": "Are you sure you want to delete this event? This action cannot be undone."
 		}
+	},
+	"distribution": {
+		"title": "Your share",
+		"help": "CofiBlocks shares part of the profit with the people who make the coffee possible. This is your share, claim it whenever you want.",
+		"role_consumer": "As a coffee lover",
+		"role_producer": "As a producer",
+		"role_roaster": "As a roaster",
+		"button_claim": "Claim",
+		"claiming": "Claiming...",
+		"claim_success": "Claimed. Transaction:"
 	}
 }

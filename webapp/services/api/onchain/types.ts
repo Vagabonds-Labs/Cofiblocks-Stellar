@@ -50,4 +50,32 @@ export interface ContractsInfoResponse {
     };
 }
 
+/** Roles cuyo saldo de reparto el usuario puede reclamar desde la app. */
+export type ClaimableRole = 'CONSUMER' | 'PRODUCER' | 'ROASTER';
+
+export interface RoleBalance {
+    role: ClaimableRole;
+    /** En stroops, como el resto de la API. */
+    balance: string;
+    /** El mismo monto en USD, ya convertido por el backend. */
+    usd: number;
+}
+
+/**
+ * Progreso del reparto de utilidades.
+ *
+ * Va de a páginas porque Soroban corta por presupuesto de recursos por
+ * transacción. Con `done: false` hay que volver a llamar para continuar.
+ */
+export interface DistributionRunResponse {
+    done: boolean;
+    pages: number;
+    txHashes: string[];
+    run: {
+        epoch: number;
+        phase: number;
+        cursor: number;
+    } | null;
+}
+
 export type { PreparedTransaction };

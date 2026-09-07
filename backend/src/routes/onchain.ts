@@ -2,11 +2,18 @@ import { Router, Request, Response } from 'express';
 
 import { HttpException } from '@/exceptions/HttpException';
 import { authenticate, requireAdmin, validate } from '@/middleware';
-import { parseEventSchema, submitSignedSchema, withdrawSchema } from '@/schemas/onchain';
+import {
+  distributionClaimCallbackSchema,
+  distributionClaimSchema,
+  parseEventSchema,
+  submitSignedSchema,
+  withdrawSchema,
+} from '@/schemas/onchain';
 import { EventsClient } from '@/lib/StellarContracts';
 import { isSameAddress } from '@/lib/StellarContracts/utils';
 import * as OnChainAccountsService from '@/services/onchain/OnChainAccountsService';
 import * as OnChainBalancesService from '@/services/onchain/OnChainBalancesService';
+import * as OnChainDistributionService from '@/services/onchain/OnChainDistributionService';
 import * as OnChainEnvService from '@/services/onchain/OnChainEnvService';
 import * as OnChainProductsService from '@/services/onchain/OnChainProductsService';
 import { successResponse } from '@/utils/formatting';
@@ -90,6 +97,67 @@ router.post(
     const { signed_xdr } = req.body;
     const txHash = await OnChainAccountsService.submitSponsoredTrustline(signed_xdr);
     successResponse(res, { tx_hash: txHash }, 'USDC trustline created', 200);
+  }
+);
+
+/**
+ * POST /api/onchain/distribution/run
+ * Avanza el reparto de utilidades.
+ *
+ * Va de a páginas porque Soroban corta por presupuesto de recursos, y corta
+ * también por request para no dejar la llamada colgada. Si vuelve
+ * `done: false`, hay que volver a llamar: el cursor vive en el contrato, así
+ * que retomar es seguro aunque el request se haya caído en el medio.
+ */
+router.post('/distribution/run', authenticate, requireAdmin, async (req: Request, res: Response, next) => {
+  const result = await OnChainDistributionService.runDistribution();
+  const message = result.done ? 'Distribution completed' : 'Distribution advanced';
+  successResponse(res, result, message, 200);
+});
+
+/**
+ * GET /api/onchain/distribution/claim_balance
+ * Saldos de reparto del usuario, uno por cada rol que tiene.
+ */
+router.get('/distribution/claim_balance', authenticate, async (req: Request, res: Response, next) => {
+  const { walletAddress, is_producer, is_roaster } = req.user!;
+  const balances = await OnChainDistributionService.getClaimBalances(walletAddress, {
+    is_producer,
+    is_roaster,
+  });
+  successResponse(res, { balances });
+});
+
+/**
+ * GET /api/onchain/distribution/claim?role=CONSUMER
+ * Transacción para reclamar. La firma el usuario: el contrato le transfiere el
+ * USDC al `caller`, así que tiene que autorizar él.
+ */
+router.get(
+  '/distribution/claim',
+  authenticate,
+  validate(distributionClaimSchema),
+  async (req: Request, res: Response, next) => {
+    const { walletAddress, is_producer, is_roaster } = req.user!;
+    const role = req.query.role as OnChainDistributionService.SelfClaimableRole;
+
+    OnChainDistributionService.assertUserHoldsRole(role, { is_producer, is_roaster });
+    const tx = await OnChainDistributionService.claimTx(role, walletAddress);
+    successResponse(res, tx);
+  }
+);
+
+router.post(
+  '/distribution/claim/callback',
+  authenticate,
+  validate(distributionClaimCallbackSchema),
+  async (req: Request, res: Response, next) => {
+    const { walletAddress, is_producer, is_roaster } = req.user!;
+    const { role, signed_xdr } = req.body;
+
+    OnChainDistributionService.assertUserHoldsRole(role, { is_producer, is_roaster });
+    const txHash = await OnChainDistributionService.submitClaim(role, walletAddress, signed_xdr);
+    successResponse(res, { tx_hash: txHash }, 'Distribution balance claimed', 200);
   }
 );
 

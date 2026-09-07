@@ -2,9 +2,10 @@ import { Prisma, SellerType } from '@prisma/client';
 import { HttpException } from '@/exceptions/HttpException';
 import { DbUsers, UserEntry, CreateUserEntry, UpdateUserEntry, DbRefreshToken, DbSessions } from '@/services/db';
 import { RegisterUserData, UserResponse } from './types';
-import { verifyStarknetSignature } from '@/utils/starknet';
+import { verifyStellarSignature } from '@/utils/stellarSignature';
+import * as NonceService from './NonceService';
 import * as OnChainRolesService from '@/services/onchain/OnChainRolesService';
-import { ROLES } from '@/lib/CofiblocksContracts/types';
+import { ROLES } from '@/lib/StellarContracts/types';
 import { logger } from '@/lib/logger';
 
 const dbUsers = new DbUsers();
@@ -17,11 +18,19 @@ export async function getUserById(userId: string) {
 }
 
 export async function registerUser(data: RegisterUserData): Promise<{ user: UserEntry; isNewUser: boolean }> {
-  // Verify the signature
-  if (!data.signature || data.signature.length === 0) {
+  if (!data.signature) {
     throw new HttpException(400, 'Signature is required for wallet registration');
   }
-  await verifyStarknetSignature(data.walletAddress, data.nonce, data.signature);
+
+  // El nonce tiene que haberlo emitido el backend y no haberse usado antes.
+  await NonceService.consumeNonce(data.nonce, data.walletAddress);
+
+  // Verificación ed25519 local, formato SEP-53. No hace falta tocar la red.
+  verifyStellarSignature(
+    data.walletAddress,
+    NonceService.buildLoginMessage(data.nonce),
+    data.signature
+  );
 
   // Check if user with this wallet address already exists
   const existingUser = await dbUsers.findUserByWalletAddress(data.walletAddress);
@@ -37,7 +46,7 @@ export async function registerUser(data: RegisterUserData): Promise<{ user: User
     isNewUser = true;
     const createData: CreateUserEntry = {
       walletAddress: data.walletAddress,
-      walletProvider: data.walletProvider || 'starknet',
+      walletProvider: data.walletProvider || 'stellar',
       sellerType: null,
       isAdmin: false,
     };

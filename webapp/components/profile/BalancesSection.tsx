@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { formatAddressForClipboard } from '@/utils/formatting'
 import { BalanceCard } from './BalanceCard'
 import { TransferModal } from './TransferModal'
-import { SwapModal } from './SwapModal'
 
 /**
  * Shortens a wallet address for display purposes only.
@@ -22,11 +21,6 @@ export function BalancesSection({ balances, user, t }: any) {
     label: string
     balance: string
   } | null>(null)
-  const [swapModalOpen, setSwapModalOpen] = useState(false)
-  const [selectedTokenForSwap, setSelectedTokenForSwap] = useState<{
-    label: string
-    balance: string
-  } | null>(null)
 
   const handleCopy = async () => {
     if (!user?.walletAddress) return
@@ -39,38 +33,13 @@ export function BalancesSection({ balances, user, t }: any) {
 
   // Handle transfer action - open modal
   const handleTransfer = (tokenLabel: string) => {
-    // Get the balance for this token
     const labelUpper = tokenLabel?.toUpperCase() || ''
-    let balance = '0.00'
-    if (labelUpper.includes('STARK')) {
-      balance = balances.balances.starks
-    } else if (labelUpper.includes('USDT')) {
-      balance = balances.balances.usdt
-    } else if (labelUpper.includes('USDC.E') || labelUpper.includes('USDC_BRIDGED')) {
-      balance = balances.balances.usdc_bridged
-    } else if (labelUpper.includes('USDC')) {
-      balance = balances.balances.usdc
-    }
+    const balance = labelUpper.includes('XLM') || labelUpper.includes('LUMEN')
+      ? balances.balances.xlm
+      : balances.balances.usdc
 
     setSelectedTokenForTransfer({ label: tokenLabel, balance })
     setTransferModalOpen(true)
-  }
-
-  // Handle swap action - open modal
-  const handleSwap = (tokenLabel: string) => {
-    // Get the balance for this token
-    const labelUpper = tokenLabel?.toUpperCase() || ''
-    let balance = '0.00'
-    if (labelUpper.includes('STARK')) {
-      balance = balances.balances.starks
-    } else if (labelUpper.includes('USDT')) {
-      balance = balances.balances.usdt
-    } else if (labelUpper.includes('USDC.E') || labelUpper.includes('USDC_BRIDGED')) {
-      balance = balances.balances.usdc_bridged
-    }
-
-    setSelectedTokenForSwap({ label: tokenLabel, balance })
-    setSwapModalOpen(true)
   }
 
   return (
@@ -132,7 +101,7 @@ export function BalancesSection({ balances, user, t }: any) {
           </p>
         )}
 
-        {user?.walletAddress && user.walletProvider === 'cavos' && (
+        {user?.walletAddress && (
           <p className="text-xs text-gray-500 max-w-md mt-2">
             {t('balances.disclaimer_message')}
           </p>
@@ -178,37 +147,19 @@ export function BalancesSection({ balances, user, t }: any) {
           />
         </div>
 
-        {/* Other Tokens Section */}
+        {/* XLM: sólo informativo. El backend paga los fees vía fee-bump, así que
+            el usuario no necesita tener XLM para comprar. */}
         <div className="mt-8">
           <h3 className="text-lg font-medium text-gray-500 mb-4">
             {t('balances.other_tokens')}
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
             <BalanceCard
-              label={t('balances.currency_usdc_bridged')}
-              amount={balances.balances.usdc_bridged}
-              color="blue"
-              showMenu={true}
-              onTransfer={() => handleTransfer(t('balances.currency_usdc_bridged'))}
-              onSwap={() => handleSwap(t('balances.currency_usdc_bridged'))}
-              t={t}
-            />
-            <BalanceCard
-              label={t('balances.currency_starks')}
-              amount={balances.balances.starks}
+              label={t('balances.currency_xlm')}
+              amount={balances.balances.xlm}
               color="orange"
               showMenu={true}
-              onTransfer={() => handleTransfer(t('balances.currency_starks'))}
-              onSwap={() => handleSwap(t('balances.currency_starks'))}
-              t={t}
-            />
-            <BalanceCard
-              label={t('balances.currency_usdt')}
-              amount={balances.balances.usdt}
-              color="emerald"
-              showMenu={true}
-              onTransfer={() => handleTransfer(t('balances.currency_usdt'))}
-              onSwap={() => handleSwap(t('balances.currency_usdt'))}
+              onTransfer={() => handleTransfer(t('balances.currency_xlm'))}
               t={t}
             />
           </div>
@@ -230,19 +181,6 @@ export function BalancesSection({ balances, user, t }: any) {
         />
       )}
 
-      {/* Swap Modal */}
-      {selectedTokenForSwap && (
-        <SwapModal
-          isOpen={swapModalOpen}
-          onClose={() => {
-            setSwapModalOpen(false)
-            setSelectedTokenForSwap(null)
-          }}
-          tokenLabel={selectedTokenForSwap.label}
-          tokenBalance={selectedTokenForSwap.balance}
-          t={t}
-        />
-      )}
     </div>
   )
 }

@@ -1,64 +1,15 @@
 'use client'
 
-import { ReactNode, useMemo } from 'react'
-import { CavosProvider } from '@cavos/react'
+import { ReactNode } from 'react'
 import { UserProvider } from './UserProvider'
 
-interface SessionConfig {
-  defaultPolicy: {
-    allowedContracts: string[]
-    maxCallsPerTx: number
-    spendingLimits: {
-      token: string
-      limit: string | number
-    }[]
-  }
-}
-
-interface AppProvidersProps {
-  children: ReactNode
-  cavosConfig?: {
-    appId: string
-    network: 'mainnet' | 'sepolia'
-    starknetRpcUrl: string,
-    paymasterApiKey: string
-    session: SessionConfig
-  }
-}
-
-export function AppProviders({ children, cavosConfig }: AppProvidersProps) {
-  const normalizedCavosConfig = useMemo(() => {
-    if (!cavosConfig) return null
-
-    return {
-      ...cavosConfig,
-      paymasterApiKey: "cav_BeI9F9MjU2aZi4ha7JpflyrRlFDyLg_71AIuAD8AOU6ZQDsV",
-      session: {
-        ...cavosConfig.session,
-        defaultPolicy: {
-          ...cavosConfig.session.defaultPolicy,
-          spendingLimits: cavosConfig.session.defaultPolicy.spendingLimits.map((limit) => ({
-            ...limit,
-            limit: BigInt(limit.limit),
-          })),
-        },
-      },
-    }
-  }, [cavosConfig]);
-
-  const content = (
-    <UserProvider>
-      {children}
-    </UserProvider>
-  )
-
-  if (!normalizedCavosConfig) {
-    return content
-  }
-
-  return (
-    <CavosProvider config={normalizedCavosConfig}>
-      {content}
-    </CavosProvider>
-  )
+/**
+ * Sólo queda el proveedor de usuario.
+ *
+ * Se fue `CavosProvider`: no hay magic link, ni Google, ni Apple. El único
+ * camino de entrada es firmar con la wallet, y de eso se encarga el Stellar
+ * Wallets Kit desde `services/wallet/walletService`, que no necesita provider.
+ */
+export function AppProviders({ children }: { children: ReactNode }) {
+  return <UserProvider>{children}</UserProvider>
 }

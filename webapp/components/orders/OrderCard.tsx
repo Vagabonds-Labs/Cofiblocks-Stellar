@@ -15,12 +15,10 @@ import {
     order,
     onDelete,
     onClick,
-    showStripeLabel = false,
   }: {
     order: Order
     onDelete?: () => void
     onClick?: (orderId: string) => void
-    showStripeLabel?: boolean
   }) {
     const t = useTranslations()
     const router = useRouter()
@@ -120,11 +118,6 @@ import {
                       ? t('my_orders.delivery.home')
                       : t('my_orders.delivery.event')}
                   </>
-                )}
-                {showStripeLabel && order.isStripeOrder && (
-                  <span className="ml-1.5 inline-flex items-center rounded bg-[#635BFF]/15 px-1.5 py-0.5 text-xs font-medium text-[#635BFF]">
-                    {t('my_orders.paid_with_stripe')}
-                  </span>
                 )}
               </div>
             </div>

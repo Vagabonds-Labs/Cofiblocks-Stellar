@@ -1,3 +1,5 @@
+import { PreparedTransaction } from '@/types/contracts';
+
 export type GrindType = 'WHOLE' | 'GROUND';
 
 export type ProductStatus = 'CREATION_REQUEST' | 'PUBLISHED' | 'HIDDEN' | 'CREATION_CANCELLED'
@@ -44,12 +46,7 @@ export interface Product {
     grindType: GrindType;
   }
 
-  export interface TransactionDetails {
-    contract_address: string;
-    entrypoint: string;
-    calldata: any[];
-  }
-  
+
   export interface ProductsResponse {
     data: Product[];
   }
@@ -65,14 +62,10 @@ export interface Product {
     product_id: string;
   }
   
-  export interface DeployProductResponse {
-    transaction: TransactionDetails;
-    type: 'read' | 'write';
-  }
-  
   export interface DeployCallbackRequest {
     product_id: string;
-    tx_hash: string;
+    /** Sobre firmado por la wallet. El backend lo envía y saca el hash. */
+    signed_xdr: string;
   }
   
   export interface DeployCallbackResponse {

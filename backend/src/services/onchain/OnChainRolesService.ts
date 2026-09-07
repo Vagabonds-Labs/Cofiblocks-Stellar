@@ -1,29 +1,41 @@
-import { HttpException } from "@/exceptions/HttpException";
-import { ChainEventsClient, ContractFactory } from "@/lib/CofiblocksContracts";
-import { ROLES } from "@/lib/CofiblocksContracts/types";
-import { logger } from "@/lib/logger";
+import { HttpException } from '@/exceptions/HttpException';
+import { ContractFactory, EventsClient } from '@/lib/StellarContracts';
+import { ROLES } from '@/lib/StellarContracts/types';
+import { isSameAddress } from '@/lib/StellarContracts/utils';
+import { logger } from '@/lib/logger';
 
-const contracts = new ContractFactory()
-const chainEventsClient = new ChainEventsClient()
+const contracts = new ContractFactory();
+const eventsClient = new EventsClient();
 
-export async function assignRole(role: ROLES, walletAddress: string){
-    const marketplaceService = contracts.getMarketplaceService()
-    const result = await marketplaceService.assignRole(role, walletAddress).call()
-    const transactionHash = (result as { transaction_hash?: string }).transaction_hash;
-    if (!transactionHash) {
-      throw new HttpException(500, 'Failed to assign role', 'FAILED_TO_ASSIGN_ROLE');
-    }
-    logger.info(`Assigned role ${role} to user ${walletAddress} on tx: ${transactionHash}`);
+/**
+ * Asigna un rol on-chain. La firma el backend, que es el admin del contrato.
+ *
+ * A diferencia de Starknet, no hace falta esperar 5 segundos a ciegas: el submit
+ * hace polling hasta la confirmación y después se verifica el evento
+ * `assign_role`, que es lo que el TODO del código anterior dejaba pendiente.
+ */
+export async function assignRole(role: ROLES, walletAddress: string): Promise<string> {
+    const marketplace = contracts.getMarketplaceService();
+    const tx = await marketplace.assignRole(role, walletAddress);
+    const { hash } = await contracts.getTxSubmitter().submitAsService(tx);
+    logger.info(`Assigned role ${role} to user ${walletAddress} on tx: ${hash}`);
 
-    // Wait for the transaction to be confirmed for 5 seconds
-    await new Promise(resolve => setTimeout(resolve, 5000));
-
-    // We need to check if the role was assigned successfully
-    const events = (await chainEventsClient.getTransactionEvents(transactionHash))
-    // TODO: emit an event from the contract that we can check here.
-    // For now, we can just check that the transaction was successful
-    if (events.getIsError()) {
+    const event = (await eventsClient.getTransactionEvents(hash)).parseAssignRoleEvents();
+    if (event.role !== role || !isSameAddress(event.account, walletAddress)) {
+      logger.error({ event, role, walletAddress }, 'assign_role event does not match the request');
       throw new HttpException(400, 'Failed to assign role', 'FAILED_TO_ASSIGN_ROLE');
     }
-    return transactionHash;
+    return hash;
+}
+
+export async function revokeRole(role: ROLES, walletAddress: string): Promise<string> {
+    const marketplace = contracts.getMarketplaceService();
+    const tx = await marketplace.revokeRole(role, walletAddress);
+    const { hash } = await contracts.getTxSubmitter().submitAsService(tx);
+    logger.info(`Revoked role ${role} from user ${walletAddress} on tx: ${hash}`);
+    return hash;
+}
+
+export async function accountHasRole(role: ROLES, walletAddress: string): Promise<boolean> {
+    return contracts.getMarketplaceService().accountHasRole(role, walletAddress);
 }

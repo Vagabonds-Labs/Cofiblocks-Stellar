@@ -3,14 +3,13 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
-import { ExclamationCircleIcon, WalletIcon, CreditCardIcon } from '@heroicons/react/24/outline'
+import { ExclamationCircleIcon, WalletIcon } from '@heroicons/react/24/outline'
 import { walletService } from '@/services/wallet/walletService'
 
-import { useCheckout, useWalletLogin } from '@/hooks'
+import { useCheckout } from '@/hooks'
 import { CheckoutHeader, OrderItemsList, SummaryCard, DeliverySection, OrderExpirationWarning, OrderSuccess } from '@/components/checkout'
 import { orderService } from '@/services/api/orders/service'
 import { Order } from '@/services/api/orders/types'
-import { useOptionalCavos } from '@/hooks/auth/useOptionalCavos'
 
 export default function CheckoutPage() {
   const { orderId } = useParams()
@@ -21,8 +20,6 @@ export default function CheckoutPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null)
   const [hasScrolledOnSuccess, setHasScrolledOnSuccess] = useState(false)
-  const { cavos } = useOptionalCavos()
-  const { connectWalletWithoutSignature, disconnectWallet } = useWalletLogin()
 
   const checkout = useCheckout(orderId as string)
 
@@ -37,26 +34,22 @@ export default function CheckoutPage() {
     setPaymentError(null)
     setIsProcessing(true)
     try {
-      const result = await checkout.handleCheckout(false)
-      if (result && result.txs) {
+      // Una sola transacción: el backend ya la armó y simuló entera.
+      const prepared = await checkout.handleCheckout()
+      if (prepared) {
         try {
-          const txHash = await walletService.executeTransactions(result.txs.map(tx => ({
-            contractAddress: tx.tx.contract_address,
-            entrypoint: tx.tx.entrypoint,
-            calldata: tx.tx.calldata,
-          })), connectWalletWithoutSignature, disconnectWallet, cavos)
+          const signedXdr = await walletService.signTransaction(prepared)
 
-          // wait for the tx to be mined in 5 seconds
-          await new Promise(resolve => setTimeout(resolve, 5000))
-
+          // El backend la envía con fee-bump y espera la confirmación, así el
+          // comprador no necesita XLM ni hay que adivinar cuánto tarda.
           const order = await orderService.checkoutOrderCallback({
             id: orderId as string,
-            tx_hash: txHash,
+            signed_xdr: signedXdr,
           })
-          
+
           // Order completed successfully
           setCompletedOrder(order)
-          
+
         } catch (walletError) {
           const errorMessage = walletError instanceof Error 
             ? walletError.message 
@@ -77,32 +70,6 @@ export default function CheckoutPage() {
       }
       console.error('Checkout error:', error)
     } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  const handleCardPayment = async () => {
-    setPaymentError(null)
-    setIsProcessing(true)
-    try {
-      const result = await checkout.handleCheckout(true)
-      if (result && result.checkoutUrl) {
-        // Redirect to Stripe checkout URL
-        window.location.href = result.checkoutUrl
-        // Note: isProcessing will remain true but component will unmount on redirect
-      } else {
-        setPaymentError('Failed to get checkout URL')
-        setIsProcessing(false)
-      }
-    } catch (error) {
-      // Checkout errors are handled in the hook and displayed via checkout.checkoutError
-      if (!checkout.checkoutError) {
-        const errorMessage = error instanceof Error 
-          ? error.message 
-          : 'An unexpected error occurred during checkout'
-        setPaymentError(errorMessage)
-      }
-      console.error('Checkout error:', error)
       setIsProcessing(false)
     }
   }
@@ -207,34 +174,6 @@ export default function CheckoutPage() {
           )}
         </button>
 
-        <button
-          onClick={handleCardPayment}
-          disabled={
-            checkout.checkoutLoading || 
-            isProcessing || 
-            isOrderExpired ||
-            (checkout.deliveryOption === 'delivery' && !checkout.isDeliveryFormSaved) ||
-            (checkout.deliveryOption === 'pickup' && !checkout.selectedEventId)
-          }
-          className={`w-full md:flex-1 py-2.5 rounded-lg text-base font-semibold transition-colors flex items-center justify-center gap-2 ${
-            checkout.checkoutLoading || 
-            isProcessing || 
-            isOrderExpired ||
-            (checkout.deliveryOption === 'delivery' && !checkout.isDeliveryFormSaved) ||
-            (checkout.deliveryOption === 'pickup' && !checkout.selectedEventId)
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700'
-          } text-white`}
-        >
-          {checkout.checkoutLoading || isProcessing ? (
-            t('checkout.processing')
-          ) : (
-            <>
-              <CreditCardIcon className="w-4 h-4" />
-              {t('checkout.button_pay_card')}
-            </>
-          )}
-        </button>
       </div>
     </main>
   )

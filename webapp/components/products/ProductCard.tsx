@@ -1,16 +1,18 @@
 'use client'
 
+import { useState } from 'react'
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation'
 import { ShoppingCartIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline'
 
 import { ProductCardProps } from './types'
-import { useCart } from '@/lib/stores/cartStore'
+import { MAX_CART_ITEMS, useCart } from '@/lib/stores/cartStore'
 
 
 export function ProductCard({ product }: ProductCardProps) {
   const t = useTranslations();
   const router = useRouter()
+  const [cartFullError, setCartFullError] = useState<string | null>(null)
   const items = useCart(state => state.items)
   const addItem = useCart(state => state.addItem)
   const updateItem = useCart(state => state.updateItem)
@@ -31,7 +33,9 @@ export function ProductCard({ product }: ProductCardProps) {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation()
-    addItem(product.id, 1)
+    if (!addItem(product.id, 1)) {
+      setCartFullError(t('cart.error_full', { max: MAX_CART_ITEMS }))
+    }
   }
 
   const handleDecrease = (e: React.MouseEvent) => {
@@ -106,6 +110,10 @@ export function ProductCard({ product }: ProductCardProps) {
                 <PlusIcon className="w-4 h-4" />
               </button>
             </div>
+          )}
+
+          {cartFullError && (
+            <p className="mt-2 text-xs text-red-700">{cartFullError}</p>
           )}
         </div>
       </div>

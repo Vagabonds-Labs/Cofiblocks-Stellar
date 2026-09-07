@@ -1,24 +1,15 @@
 {
-    "notifications": {
-        "welcome_message": "¡Bienvenido a CoFiBlocks! Tu cuenta ha sido creada exitosamente.",
-        "cavos_authentication_failed": "No pudimos autenticarte con Cavos. Por favor, contacta con soporte para obtener ayuda.",
-        "cavos_registration_failed": "No pudimos registrarte con Cavos. Por favor, contacta con soporte para obtener ayuda.",
-        "cavos_registration_succeeded": "Te registramos con Cavos exitosamente. ¡Ahora tienes una wallet!",
-
-        "FARM_CREATED_SUCCESSFULLY": "Finca {0} creada exitosamente",
-
-        "PRODUCT_CREATED_SUCCESSFULLY": "Producto creado exitosamente, listo para ser desplegado en cadena",
-
-        "PRODUCT_DEPLOYMENT_SUCCESSFUL": "Producto desplegado exitosamente! Ahora está listo para ser vendido en la marketplace!",
-
-        "PRODUCT_DELETED_SUCCESSFULLY": "Producto eliminado exitosamente",
-
-        "ROLE_ASSIGNED": "Has sido asignado el rol de {0}",
-        "ROLE_REVOKED": "Has sido revocado el rol de {0}",
-
-        "DELIVERY_NOT_PAID": "No encontramos el pago de entrega para el pedido {0}. Por favor, contacta con soporte para obtener ayuda.",
-        "ORDER_PAID": "Tu pedido {0} ha sido pagado exitosamente y está siendo procesado",
-        "ORDER_RECEIVED": "¡Has vendido! Pedido {0}",
-        "ORDER_DELIVERED": "Tu pedido {0} ha sido entregado exitosamente"
-    }
+  "notifications": {
+    "welcome_message": "¡Bienvenido a CoFiBlocks! Tu cuenta ha sido creada exitosamente.",
+    "FARM_CREATED_SUCCESSFULLY": "Finca {0} creada exitosamente",
+    "PRODUCT_CREATED_SUCCESSFULLY": "Producto creado exitosamente, listo para ser desplegado en cadena",
+    "PRODUCT_DEPLOYMENT_SUCCESSFUL": "Producto desplegado exitosamente! Ahora está listo para ser vendido en la marketplace!",
+    "PRODUCT_DELETED_SUCCESSFULLY": "Producto eliminado exitosamente",
+    "ROLE_ASSIGNED": "Has sido asignado el rol de {0}",
+    "ROLE_REVOKED": "Has sido revocado el rol de {0}",
+    "DELIVERY_NOT_PAID": "No encontramos el pago de entrega para el pedido {0}. Por favor, contacta con soporte para obtener ayuda.",
+    "ORDER_PAID": "Tu pedido {0} ha sido pagado exitosamente y está siendo procesado",
+    "ORDER_RECEIVED": "¡Has vendido! Pedido {0}",
+    "ORDER_DELIVERED": "Tu pedido {0} ha sido entregado exitosamente"
+  }
 }

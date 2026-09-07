@@ -3,10 +3,10 @@
  * Handles product-related API calls
  */
 
-import { api } from '@/lib/api';
+import { api } from '@/lib/api'
+import { PreparedTransaction } from '@/types/contracts';
 import { 
   DeployProductRequest, 
-  DeployProductResponse, 
   DeployCallbackRequest, 
   DeployCallbackResponse, 
   ProductStatus,
@@ -14,7 +14,6 @@ import {
   CreateProductData,
   CreateProductResponse,
   Product,
-  TransactionDetails,
 } from './types';
 import { toFormData } from './utils';
 
@@ -65,14 +64,15 @@ export class ProductService {
    * Get transaction details for deploying a product on-chain
    * @param data - Deployment data (initialStock and price)
    */
-  async deployProduct(data: DeployProductRequest): Promise<DeployProductResponse> {
-    const response = await api.post<{data: DeployProductResponse}>('/products/deploy', data)
+  /** Devuelve la transacción ya simulada, lista para que la firme la wallet. */
+  async deployProduct(data: DeployProductRequest): Promise<PreparedTransaction> {
+    const response = await api.post<{data: PreparedTransaction}>('/products/deploy', data)
     return response.data
   }
 
   /**
-   * Callback endpoint to notify backend about successful deployment transaction
-   * @param data - Callback data (product_id and tx_hash)
+   * Cierra la publicación: el backend envía la transacción firmada con
+   * fee-bump y verifica el evento `create_product`.
    */
   async deployCallback(data: DeployCallbackRequest): Promise<DeployCallbackResponse> {
     const response = await api.post<{data: DeployCallbackResponse}>('/products/deploy/callback', data)
@@ -112,14 +112,13 @@ export class ProductService {
   async updateStock(
     productId: string,
     currentStock: number
-  ): Promise<{ tx?: TransactionDetails; txType?: 'read' | 'write'; message: string }> {
-    const response = await api.patch<{data: {tx?: TransactionDetails; txType?: 'read' | 'write'}; message: string}>(
+  ): Promise<{ tx: PreparedTransaction | null; message: string }> {
+    const response = await api.patch<{data: {tx: PreparedTransaction | null}; message: string}>(
       `/products/${productId}/stock`,
       { currentStock }
     )
     return {
-      tx: response.data?.tx,
-      txType: response.data?.txType,
+      tx: response.data?.tx ?? null,
       message: response.message || 'Stock updated successfully'
     }
   }
@@ -129,8 +128,9 @@ export class ProductService {
    * @param productId - Product ID
    * @param txHash - Transaction hash
    */
-  async updateStockSync(productId: string): Promise<void> {
-    await api.get(`/products/${productId}/stock/sync`)
+  /** Envía la transacción firmada y sincroniza el stock con lo que quedó on-chain. */
+  async submitStockUpdate(productId: string, signedXdr: string): Promise<void> {
+    await api.post(`/products/${productId}/stock/callback`, { signed_xdr: signedXdr })
   }
 
   /**

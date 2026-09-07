@@ -1,19 +1,8 @@
-export const SIGNATURE_DOMAIN = {
-    name: 'CofiBlocks',
-    version: '1',
-    chainId: process.env.NEXT_PUBLIC_CAVOS_NETWORK === 'mainnet' ? 'SN_MAIN' : 'SN_SEPOLIA',
-  }
-  
-  export const SIGNATURE_TYPES = {
-    StarkNetDomain: [
-      { name: 'name', type: 'felt' },
-      { name: 'version', type: 'felt' },
-      { name: 'chainId', type: 'felt' },
-    ],
-    Message: [
-      { name: 'nonce', type: 'felt' },
-    ],
-  }
-  
-  export const SIGNATURE_PRIMARY_TYPE = 'Message'
-  
+/**
+ * Formato SEP-53 para firmar mensajes.
+ *
+ * La wallet antepone este prefijo y hashea con SHA-256 antes de firmar, así un
+ * mensaje firmado nunca puede pasar por una transacción firmada. El backend
+ * verifica lo mismo en local con la clave pública ed25519 de la cuenta.
+ */
+export const SEP53_PREFIX = 'Stellar Signed Message:\n'

@@ -1,12 +1,8 @@
-export interface UnifiedCall {
-    contractAddress: string;
-    entrypoint: string;
-    calldata: any[];
-}
-  
-export interface UnifiedWallet {
-    type: "cavos" | "starknet";
+import { PreparedTransaction } from '@/types/contracts';
+
+export interface ConnectedWallet {
     address: string;
-    execute: (calls: UnifiedCall | UnifiedCall[]) => Promise<string>;
+    walletId: string;
 }
-  
+
+export type { PreparedTransaction };

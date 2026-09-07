@@ -12,7 +12,6 @@ import {
   GetHomeDeliveryPriceRequest, 
   GetHomeDeliveryPriceResponse,
   CheckoutOrderRequest,
-  CheckoutOrderTransaction,
   OrderItem,
   Order,
   CheckoutOrderCallbackRequest,

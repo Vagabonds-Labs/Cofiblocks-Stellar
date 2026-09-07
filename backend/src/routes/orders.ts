@@ -50,26 +50,15 @@ router.post(
 
 
 router.post('/checkout', authenticate, validate(checkoutOrderSchema), async (req: Request, res: Response, next) => {
-  let { userId, walletAddress } = req.user!;
+  const { userId, walletAddress } = req.user!;
   const payload = req.body;
 
-  if (payload.stripe_checkout) {
-    walletAddress = process.env.STRIPE_WALLET_ADDRESS!;
-  }
   const deliveryEntry = await DeliveryService.buildDeliveryEntry(payload.delivery_event_id, payload.delivery_home);
-  const { txs, checkoutUrl } = await OrdersService.createRequestOrderPayment(
-    userId, walletAddress, payload, deliveryEntry, payload.stripe_checkout);
-  
-  if (checkoutUrl) {
-    successResponse(res, { checkoutUrl, txs: [] }, 'Order checked out successfully', 200);
-  } else {
-    const result = txs.map(tx => ({
-      tx: tx.getTransactionDetails(),
-      tx_type: tx.getTransactionType(),
-    }));
+  const { tx } = await OrdersService.createRequestOrderPayment(
+    userId, walletAddress, payload, deliveryEntry);
 
-    successResponse(res, { txs: result, checkoutUrl: null }, 'Order checked out successfully', 200);
-  }
+  // Una sola transacción para firmar, no un multicall.
+  successResponse(res, tx, 'Order checked out successfully', 200);
 });
 
 router.post(
@@ -78,9 +67,10 @@ router.post(
   validate(checkoutOrderCallbackSchema), 
   async (req: Request, res: Response, next) => 
 {
-  const { id, tx_hash } = req.body;
-  logger.info('Received checkout callback request for order ' + id + ' with tx hash ' + tx_hash);
-  const order = await OrdersService.verifyOrderPayment(id, tx_hash);
+  const { id, signed_xdr } = req.body;
+  logger.info('Received checkout callback request for order ' + id);
+  // El backend envía la transacción firmada y saca el hash del submit.
+  const order = await OrdersService.verifyOrderPayment(id, signed_xdr);
 
   successResponse(res, order, 'Order checked out successfully', 200);
 });

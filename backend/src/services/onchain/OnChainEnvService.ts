@@ -1,5 +1,4 @@
-import { ContractFactory } from "@/lib/CofiblocksContracts";
-import { usdToWei } from "@/lib/CofiblocksContracts/utils";
+import { ContractFactory } from '@/lib/StellarContracts';
 
 const contractFactory = new ContractFactory();
 
@@ -11,85 +10,69 @@ export function getMarketplaceAddress() {
     return contractFactory.getMarketplaceService().contractAddress;
 }
 
-export function getCofiCollectionAddress() {
-    return contractFactory.getCofiCollectionService().contractAddress;
-}
-
 export function getDistributionAddress() {
     return contractFactory.getDistributionService().contractAddress;
 }
 
-export function getVoyagerURL(contractAddress: string) {
-    if (process.env.STARKNET_NETWORK === 'sepolia') {
-        return `https://sepolia.voyager.online/contract/${contractAddress}`;
-    }
-    return `https://voyager.online/contract/${contractAddress}`;
+export function getUSDCAddress() {
+    return contractFactory.getUSDCService().contractAddress;
 }
 
+export function getNetworkPassphrase() {
+    return contractFactory.getClient().networkPassphrase;
+}
+
+export function getRpcUrl() {
+    return contractFactory.getClient().deployment.rpcUrl;
+}
+
+/** Explorador de bloques. Reemplaza a Voyager. */
+export function getExplorerURL(contractAddress: string) {
+    const network = getNetwork() === 'mainnet' ? 'public' : 'testnet';
+    return `https://stellar.expert/explorer/${network}/contract/${contractAddress}`;
+}
+
+/**
+ * Datos que muestra el panel admin.
+ *
+ * Se cayeron `cofiCollection` y `swap`: esos contratos ya no existen. Los
+ * totales ahora salen de getters del contrato, no de leer storage crudo con
+ * selectores hardcodeados.
+ */
 export async function getStadisticsInContracts() {
-    // get total profit from distribution contract
     const distributionService = contractFactory.getDistributionService();
-    const totalProfit = await distributionService.getTotalProfit();
-    const totalPurchases = await distributionService.getTotalPurchases();
-
-    // get marketplace balance
     const marketplaceService = contractFactory.getMarketplaceService();
-    const usdcService = contractFactory.getUSDCERC20Service();
-    const usdcBalance = await usdcService.getBalances(marketplaceService.contractAddress).call();
+    const usdcService = contractFactory.getUSDCService();
 
-    let swapBalance = "0";
-    if (process.env.STARKNET_NETWORK === 'mainnet') {
-        // Swap is only supported in mainnet
-        const swapService = contractFactory.getSwapService();
-        swapBalance = (await usdcService.getBalances(swapService.contractAddress).call()).toString();
-    }
+    const [totalProfit, totalPurchases, usdcBalance, epoch, run] = await Promise.all([
+        distributionService.getTotalProfit(),
+        distributionService.getTotalPurchases(),
+        usdcService.balance(marketplaceService.contractAddress),
+        distributionService.getEpoch(),
+        distributionService.getRun(),
+    ]);
 
     return {
+        network: getNetwork(),
         distribution: {
             contractAddress: distributionService.contractAddress,
-            url: getVoyagerURL(distributionService.contractAddress),
+            url: getExplorerURL(distributionService.contractAddress),
             totalProfit: totalProfit.toString(),
             totalPurchases: totalPurchases.toString(),
+            epoch,
+            // Reparto en curso, si quedó uno a medias. `null` si no hay ninguno.
+            run,
         },
         marketplace: {
             contractAddress: marketplaceService.contractAddress,
-            url: getVoyagerURL(marketplaceService.contractAddress),
+            url: getExplorerURL(marketplaceService.contractAddress),
             usdcBalance: usdcBalance.toString(),
         },
-        cofiCollection: {
-            contractAddress: contractFactory.getCofiCollectionService().contractAddress,
-            url: getVoyagerURL(contractFactory.getCofiCollectionService().contractAddress),
+        usdc: {
+            contractAddress: usdcService.contractAddress,
+            issuer: usdcService.issuer,
+            decimals: usdcService.decimals,
+            url: getExplorerURL(usdcService.contractAddress),
         },
-        swap: {
-            contractAddress: contractFactory.getSwapService().contractAddress,
-            url: getVoyagerURL(contractFactory.getSwapService().contractAddress),
-            usdcBalance: swapBalance.toString(),
-        }
-    }
-}
-
-export async function mintSepoliaUSDC(walletAddress: string) {
-  if (process.env.STARKNET_NETWORK !== 'sepolia') {
-    throw new Error('This function is only available in sepolia');
-  }
-  const usdcService = contractFactory.getUSDCERC20Service();
-  const one_hundred_dolars = 100000000;
-  await usdcService.mintToken(BigInt(one_hundred_dolars), walletAddress).call();
-}
-
-export async function getCavosConfig() {
-    const marketplaceAddress = getMarketplaceAddress();
-    const distributionAddress = getDistributionAddress();
-    const swapAddress = contractFactory.getSwapService().contractAddress;
-    const usdcAddress = contractFactory.getUSDCERC20Service().contractAddress;
-
-    return {
-        contracts: [
-            marketplaceAddress, distributionAddress, swapAddress, usdcAddress,
-        ],
-        spendingLimits: [{
-            token: usdcAddress,
-            limit: usdToWei(1000).toString(),
-        }]
-    }
+    };
 }

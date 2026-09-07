@@ -6,9 +6,23 @@ export interface CartItem {
   amount: number
 }
 
+/**
+ * Productos distintos que caben en una compra.
+ *
+ * `buy_products` los cobra todos en una sola transacción, y Soroban acota los
+ * recursos por transacción. El contrato rechaza con `TooManyItems` por encima de
+ * este número (medido por simulación contra el presupuesto de mainnet), así que
+ * el carrito corta antes en vez de dejar que falle al final del checkout.
+ *
+ * Es el número de productos distintos, no de unidades: sumar más unidades de un
+ * producto que ya está en el carrito no cuenta.
+ */
+export const MAX_CART_ITEMS = 16
+
 interface CartState {
   items: CartItem[]
-  addItem: (productId: string, amount: number) => void
+  /** `false` si el carrito ya está lleno y el producto no estaba en él. */
+  addItem: (productId: string, amount: number) => boolean
   removeItem: (productId: string) => void
   updateItem: (productId: string, amount: number) => void
   clearCart: () => void
@@ -16,15 +30,18 @@ interface CartState {
 
 export const useCart = create<CartState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       items: [],
 
       addItem: (productId, amount) => {
-        if (amount <= 0 || Number.isNaN(amount)) return;
+        if (amount <= 0 || Number.isNaN(amount)) return false;
+
+        const { items } = get()
+        const existing = items.find(i => i.productId === productId)
+
+        if (!existing && items.length >= MAX_CART_ITEMS) return false
 
         set((state) => {
-          const existing = state.items.find(i => i.productId === productId)
-
           if (existing) {
             return {
               items: state.items.map(i =>
@@ -39,6 +56,7 @@ export const useCart = create<CartState>()(
             items: [...state.items, { productId, amount }]
           }
         })
+        return true
       },
 
       removeItem: (productId) => {

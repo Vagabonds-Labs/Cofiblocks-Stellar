@@ -2,24 +2,18 @@
 
 import { useState } from 'react'
 
-export function useFundingActions(user: any, getOnramp: any, t: any) {
+/**
+ * Formas de fondear la cuenta.
+ *
+ * El on-ramp con tarjeta se fue con Cavos: era su widget. Queda el bridge desde
+ * otras cadenas, ahora con Stellar como destino.
+ */
+export function useFundingActions(user: any, t: any) {
   const [error, setError] = useState<string | null>(null)
 
-  const handleFundByCard = () => {
-    if (user?.walletProvider !== 'cavos') return
-
-    try {
-      const url = getOnramp('RAMP_NETWORK')
-      window.open(url, '_blank')
-    } catch (err) {
-      console.error(err)
-      setError(t('fund.error_onramp'))
-    }
-  }
-
   const handleFundByBridge = () => {
-    alert('Bridge coming soon!')
+    // Lo abre FundingSection con el widget.
   }
 
-  return { handleFundByCard, handleFundByBridge, error, setError }
+  return { handleFundByBridge, error, setError }
 }

@@ -1,4 +1,5 @@
-import { TransactionDetails } from "../products/types";
+import { PreparedTransaction } from '@/types/contracts';
+
 
 export interface CreateOrderItem {
     id: string; // product_id
@@ -57,13 +58,11 @@ export interface CreateOrderItem {
     paymentTx: string | null;
     createdAt: string;
     expiresAt: string;
-    isStripeOrder?: boolean;
     delivery: Delivery | null;
     orderItems: OrderItem[];
   }
 
   export interface OrderWithBuyer extends Order {
-    isStripeOrder: boolean;
     buyerName: string | null;
     buyerEmail: string | null;
     buyerWalletAddress: string | null;
@@ -126,7 +125,6 @@ export interface CreateOrderItem {
   export interface CheckoutOrderRequest {
     id: string;
     delivery_event_id?: string;
-    stripe_checkout: boolean;
     delivery_home: {
       country: string;
       state: string;
@@ -138,17 +136,14 @@ export interface CreateOrderItem {
     } | null;
   }
   
-  export interface CheckoutOrderTransaction {
-      tx: TransactionDetails;
-      tx_type: string;
-  }
-
-  export interface CheckoutOrderResponse {
-    txs: CheckoutOrderTransaction[] | null;
-    checkoutUrl: string | null;
-  }
+  /**
+   * Una sola transacción: Stellar admite un único `InvokeHostFunction` por
+   * transacción, así que el multicall del checkout ya no existe.
+   */
+  export type CheckoutOrderResponse = PreparedTransaction;
 
   export interface CheckoutOrderCallbackRequest {
     id: string;
-    tx_hash: string;
+    /** Sobre firmado por la wallet. El backend lo envía y saca el hash. */
+    signed_xdr: string;
   }

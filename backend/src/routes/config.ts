@@ -1,43 +1,26 @@
 import { Router, Request, Response } from 'express';
 
 import { successResponse } from '@/utils/formatting';
-import { getCavosConfig } from '@/services/onchain/OnChainEnvService';
+import * as OnChainEnvService from '@/services/onchain/OnChainEnvService';
 
 const router = Router();
 
-interface RawSpendingLimit {
-  token: string;
-  limit: string | number;
-}
-
-function parseJsonArray<T>(value: string | undefined, fallback: T[]): T[] {
-  if (!value) return fallback;
-
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? (parsed as T[]) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-router.get('/cavos', async (_req: Request, res: Response) => {
-  const cavosConfig = await getCavosConfig();
-  const { contracts, spendingLimits } = cavosConfig;
-
-  const starknetNetwork = process.env.STARKNET_NETWORK === 'sepolia' ? 'sepolia' : 'mainnet';
-
+/**
+ * GET /api/config/stellar
+ *
+ * Lo que el frontend necesita para conectar la wallet y firmar contra la red
+ * correcta. Reemplaza a `GET /api/config/cavos`: ya no hay magic link, ni Google,
+ * ni Apple — sólo login por wallet.
+ */
+router.get('/stellar', async (_req: Request, res: Response) => {
   successResponse(res, {
-    appId: process.env.CAVOS_APP_ID ?? '',
-    network: starknetNetwork,
-    starknetRpcUrl: process.env.RPC_URL ?? '',
-    paymasterApiKey: process.env.CAVOS_API_KEY ?? '',
-    session: {
-      defaultPolicy: {
-        allowedContracts: contracts,
-        maxCallsPerTx: 5,
-        spendingLimits,
-      },
+    network: OnChainEnvService.getNetwork(),
+    networkPassphrase: OnChainEnvService.getNetworkPassphrase(),
+    rpcUrl: OnChainEnvService.getRpcUrl(),
+    contracts: {
+      marketplace: OnChainEnvService.getMarketplaceAddress(),
+      distribution: OnChainEnvService.getDistributionAddress(),
+      usdc: OnChainEnvService.getUSDCAddress(),
     },
   });
 });

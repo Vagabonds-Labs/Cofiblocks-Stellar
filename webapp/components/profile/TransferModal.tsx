@@ -33,12 +33,10 @@ export function TransferModal({
   const [isWithdrawing, setIsWithdrawing] = useState<boolean>(false)
   const [successTxHash, setSuccessTxHash] = useState<string | null>(null)
 
-  // Map token label to PaymentToken enum
-  const getPaymentToken = (label: string): PaymentToken | 'USDC_BRIDGED' => {
+  // Sólo quedan XLM y USDC.
+  const getPaymentToken = (label: string): PaymentToken => {
     const labelUpper = label?.toUpperCase() || ''
-    if (labelUpper.includes('STARK')) return PaymentToken.STRK
-    if (labelUpper.includes('USDT')) return PaymentToken.USDT
-    if (labelUpper.includes('USDC.E') || labelUpper.includes('USDC_BRIDGED')) return 'USDC_BRIDGED'
+    if (labelUpper.includes('XLM') || labelUpper.includes('LUMEN')) return PaymentToken.XLM
     return PaymentToken.USDC
   }
 
@@ -57,8 +55,9 @@ export function TransferModal({
   }, [isOpen])
 
   const validateAddress = (addr: string): boolean => {
-    // Must start with 0x and have 64 characters after (66 total)
-    return /^0x[a-fA-F0-9]{64}$/.test(addr)
+    // Cuenta clásica de Stellar: StrKey `G` + 55 caracteres base32.
+    // Las cuentas contrato (`C…`) no se soportan en v1.
+    return /^G[A-Z2-7]{55}$/.test(addr)
   }
 
   const handleAmountChange = (value: string) => {
@@ -83,7 +82,7 @@ export function TransferModal({
     if (value && !validateAddress(value)) {
       setErrors(prev => ({
         ...prev,
-        address: 'Address must start with 0x and have 64 characters after'
+        address: 'Enter a valid Stellar account (G…)'
       }))
     } else if (value && value.toLowerCase() === userWalletAddress.toLowerCase()) {
       setErrors(prev => ({
@@ -109,8 +108,8 @@ export function TransferModal({
     if (!address) {
       newErrors.address = 'Please enter a wallet address'
     } else if (!validateAddress(address)) {
-      newErrors.address = 'Address must start with 0x and have 64 characters after'
-    } else if (address.toLowerCase() === userWalletAddress.toLowerCase()) {
+      newErrors.address = 'Enter a valid Stellar account (G…)'
+    } else if (address === userWalletAddress) {
       newErrors.address = 'You cannot send tokens to your own address'
     }
 
@@ -148,7 +147,7 @@ export function TransferModal({
     parseFloat(amount) <= maxAmount &&
     address &&
     validateAddress(address) &&
-    address.toLowerCase() !== userWalletAddress.toLowerCase()
+    address !== userWalletAddress
 
   return (
     <Modal
@@ -217,7 +216,7 @@ export function TransferModal({
             id="address"
             value={address}
             onChange={(e) => handleAddressChange(e.target.value)}
-            placeholder="0x..."
+            placeholder="G..."
             className={`block w-full px-3 py-2 border rounded-md shadow-sm font-mono text-sm
                        focus:outline-none focus:ring-orange-500 focus:border-orange-500 ${
               errors.address ? 'border-red-300' : 'border-gray-300'

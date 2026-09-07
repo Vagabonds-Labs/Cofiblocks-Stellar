@@ -318,7 +318,7 @@ export default function AdminDashboardPage() {
                   type="text"
                   value={filters.walletProvider}
                   onChange={(e) => handleFilterChange('walletProvider', e.target.value)}
-                  placeholder="starknet, cavos..."
+                  placeholder="stellar"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>

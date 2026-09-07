@@ -14,7 +14,7 @@ import { useTranslations } from 'next-intl'
 import NextImage from 'next/image'
 
 import { productService, Product } from '@/services/api/products'
-import { useCart } from '@/lib/stores/cartStore'
+import { MAX_CART_ITEMS, useCart } from '@/lib/stores/cartStore'
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -25,7 +25,8 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+  const [cartFullError, setCartFullError] = useState<string | null>(null)
+
   const items = useCart(state => state.items)
   const addItem = useCart(state => state.addItem)
   const updateItem = useCart(state => state.updateItem)
@@ -66,8 +67,8 @@ export default function ProductDetailPage() {
   }
 
   const handleAddToCart = () => {
-    if (product) {
-      addItem(product.id, 1)
+    if (product && !addItem(product.id, 1)) {
+      setCartFullError(t('cart.error_full', { max: MAX_CART_ITEMS }))
     }
   }
 
@@ -234,6 +235,10 @@ export default function ProductDetailPage() {
                   <PlusIcon className="w-5 h-5" />
                 </button>
               </div>
+            )}
+
+            {cartFullError && (
+              <p className="mt-3 text-sm text-red-700">{cartFullError}</p>
             )}
           </div>
         </div>

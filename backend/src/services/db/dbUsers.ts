@@ -100,7 +100,7 @@ export class DbUsers {
     const user = await prisma.user.create({
       data: {
         walletAddress: data.walletAddress,
-        walletProvider: data.walletProvider || 'starknet',
+        walletProvider: data.walletProvider || 'stellar',
         sellerType: data.sellerType || null,
         isAdmin: data.isAdmin || false,
       },

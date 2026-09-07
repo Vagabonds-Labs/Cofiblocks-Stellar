@@ -1,4 +1,4 @@
-import { ChainClient } from "@/lib/CofiblocksContracts/ChainClient";
+import { PreparedTransaction } from "@/lib/StellarContracts/types/transactions";
 import { DeliveryMethod, OrderStatus } from "@prisma/client";
 
 export interface CreateOrderItem {
@@ -44,7 +44,6 @@ export interface OrderResponse {
     paymentTx: string | null;
     createdAt: Date;
     expiresAt: Date;
-    isStripeOrder: boolean;
     delivery: DeliveryResponse | null;
     orderItems: OrderItemResponse[];
 }
@@ -105,8 +104,11 @@ export interface DeliveryHomeInput {
 }
 
 export interface CheckoutOrderOutput {
-    txs: ChainClient[];
-    checkoutUrl: string | null;
+    /**
+     * Una sola transacción: Stellar admite un único `InvokeHostFunction` por
+     * transacción, así que el multicall del checkout ya no existe.
+     */
+    tx: PreparedTransaction;
 }
 
 export interface OrdersFilter {

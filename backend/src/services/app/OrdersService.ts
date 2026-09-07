@@ -10,10 +10,9 @@ import { OrderResponse, OrderItemResponse, CheckoutOrderInput, CheckoutOrderOutp
 import * as ordersMappers from '@/services/mappers/ordersMappers';
 import * as OnChainBalancesService from '../onchain/OnChainBalancesService';
 import * as OnChainProductsService from '../onchain/OnChainProductsService';
+import { ContractFactory } from '@/lib/StellarContracts';
 import * as NotificationService from './NotificationService';
-import { DbStripeProducts } from '../db/dbStripeProducts';
 import { DbUsers } from '../db/dbUsers';
-import * as StripeService from '../stripe/stripeService';
 import { isGamDelivery } from './DeliveryService';
 import { OrderNotificationParams, sendOrderNotificationEmail } from '../email/emailService';
 import { DateTime } from 'luxon';
@@ -21,7 +20,6 @@ import { DateTime } from 'luxon';
 
 const dbOrders = new DbOrders();
 const dbProducts = new DbProducts();
-const dbStripeProducts = new DbStripeProducts();
 const dbUsers = new DbUsers();
 
 export async function createOrder(userId: string, data: CreateOrderRequest): Promise<string> {
@@ -116,45 +114,34 @@ async function assertOrderIsPayable(order: OrderForCheckoutEntry, requestUserId:
     }
 }
 
-async function buildStripeCheckoutUrl(
-  order: OrderForCheckoutEntry, gamDelivery: boolean, otherDelivery: boolean
-): Promise<string> {
-  const productIds = order.orderItems.map((item) => item.product.id);
-  const stripeProducts = await dbStripeProducts.findStripeProductsByProductIds(productIds);
-  if (stripeProducts.length !== productIds.length) {
-    const notFoundProductIds = productIds.filter(
-      (id) => !stripeProducts.some((product) => product.productId === id)
+/**
+ * Cuánto puede vivir el XDR que firma el comprador, en segundos.
+ *
+ * La transacción **nunca** debe sobrevivir a la orden: `OrderExpirationJob`
+ * cancela a los 10 minutos y devuelve el stock reservado, así que un XDR con
+ * más vida que la orden permite que el pago confirme sobre stock ya liberado
+ * y quizá revendido. El pago entra igual y hay que reconciliarlo a mano.
+ *
+ * Se reserva un margen para el submit y la confirmación en red, y se recorta
+ * a lo que quede de la orden.
+ */
+const SUBMIT_MARGIN_SECONDS = 60;
+const MIN_SIGNING_WINDOW_SECONDS = 60;
+const MAX_SIGNING_WINDOW_SECONDS = 5 * 60;
+
+function signingWindowForOrder(expiresAt: Date): number {
+  const remaining = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+  const window = Math.min(remaining - SUBMIT_MARGIN_SECONDS, MAX_SIGNING_WINDOW_SECONDS);
+
+  if (window < MIN_SIGNING_WINDOW_SECONDS) {
+    throw new HttpException(
+      400,
+      'The order is about to expire; start a new one before paying',
+      'ORDER_EXPIRING_TOO_SOON'
     );
-    const msg = `There are ${notFoundProductIds.length} product(s) not available for stripe checkout: ${notFoundProductIds.join(', ')}`;
-    logger.error(msg);
-    throw new HttpException(400, msg, 'PRODUCTS_NOT_AVAILABLE_FOR_STRIPE_CHECKOUT');
   }
-
-
-  const lineItems = order.orderItems.map((item) => ({
-    price: stripeProducts.find((product) => product.productId === item.product.id)?.stripePriceId,
-    quantity: item.items,
-  }));
-
-  if (gamDelivery) {
-    lineItems.push({
-      price: process.env.STRIPE_HOME_DELIVERY_GAM_PRICE,
-      quantity: 1,
-    });
-  } else if (otherDelivery) {
-    lineItems.push({
-      price: process.env.STRIPE_HOME_DELIVERY_OTHER_PRICE,
-      quantity: 1,
-    });
-  }
-
-  const checkoutUrl = await StripeService.createStripeCheckoutSession(
-    lineItems as StripeService.StripeLineItem[], 
-    order.id
-  );
-  return checkoutUrl;
+  return window;
 }
-
 
   /**
    * Checkout an order
@@ -165,7 +152,6 @@ export async function createRequestOrderPayment(
     walletAddress: string,
     data: CheckoutOrderInput,
     deliveryEntry: CreateDeliveryEntry,
-    stripeCheckout: boolean = false
   ): Promise<CheckoutOrderOutput> {
     const order = await dbOrders.findOrderByIdForCheckout(data.id);
     if (!order) {
@@ -182,45 +168,29 @@ export async function createRequestOrderPayment(
 
     // Check that user has enough balance to pay for the order
     if (!await OnChainBalancesService.canUserPayUSDC(walletAddress, orderTotal + deliveryFee)) {
-      if (stripeCheckout) {
-        throw new HttpException(400, 'Stripe checkout is currently disabled', 'STRIPE_CHECKOUT_DISABLED');
-      }
       throw new HttpException(400, 'Insufficient USDC balance to pay for the order', 'INSUFFICIENT_USDC_BALANCE');
     }
 
-    if (stripeCheckout) {
-      let gamDelivery = false;
-      let otherDelivery = false;
-      if (deliveryFee > 0 && deliveryEntry.state) {
-        const isGam = isGamDelivery(deliveryEntry.state);
-        if (isGam) {
-          gamDelivery = true;
-        } else {
-          otherDelivery = true;
-        }
-      }
-      const checkoutUrl = await buildStripeCheckoutUrl(order, gamDelivery, otherDelivery);
-      return { txs: [], checkoutUrl };
-    }
-
-    const txs = await OnChainProductsService.buyProductsTxs(
+    // Una sola transacción: el fee de envío se cobra dentro de `buy_products`.
+    const tx = await OnChainProductsService.buyProductsTx(
       order.orderItems.map((item) => item.product.tokenId ?? ''),
       order.orderItems.map((item) => item.items),
-      orderTotal,
       deliveryFee,
       walletAddress,
+      signingWindowForOrder(order.expiresAt),
     );
-    return { txs, checkoutUrl: null };
+    return { tx };
   }
 
 
-export async function verifyOrderPayment(orderId: string, txHash: string): Promise<OrderResponse> {
-    // check if the tx hash is already used
-    const isTxHashAlreadyUsed = await dbOrders.isTxHashAlreadyUsed(txHash);
-    if (isTxHashAlreadyUsed) {
-      throw new HttpException(400, 'Transaction hash already used', 'TX_HASH_ALREADY_USED');
-    }
-
+/**
+ * Cierra el pago de una orden.
+ *
+ * Recibe el **XDR firmado**, no un hash: el backend lo envuelve en un fee-bump,
+ * lo manda y saca el hash del submit, que es más confiable que confiar en el que
+ * reporte el cliente. También es lo que hace que el comprador no necesite XLM.
+ */
+export async function verifyOrderPayment(orderId: string, signedXdr: string): Promise<OrderResponse> {
     const order = await dbOrders.findOrderByIdForCheckout(orderId);
     if (!order) {
       throw new HttpException(404, 'Order not found', 'ORDER_NOT_FOUND');
@@ -228,6 +198,29 @@ export async function verifyOrderPayment(orderId: string, txHash: string): Promi
     const user = order.buyer;
     if (!user || !user.walletAddress) {
       throw new HttpException(404, 'Buyer of the order not found', 'BUYER_NOT_FOUND');
+    }
+
+    const { hash: txHash } = await new ContractFactory().getTxSubmitter().submitSigned(signedXdr);
+    logger.info('Payment transaction confirmed on chain with hash ' + txHash);
+
+    const isTxHashAlreadyUsed = await dbOrders.isTxHashAlreadyUsed(txHash);
+    if (isTxHashAlreadyUsed) {
+      throw new HttpException(400, 'Transaction hash already used', 'TX_HASH_ALREADY_USED');
+    }
+
+    // La orden pudo expirar entre que se firmó la transacción y llegó el
+    // callback. El pago ya está hecho y el stock ya se liberó: hay que
+    // reconciliarlo a mano, no dejarlo pasar en silencio.
+    if (order.status === OrderStatus.CANCELLED) {
+      logger.error(
+        { orderId, txHash },
+        'Payment confirmed on chain for an order that had already been cancelled'
+      );
+      throw new HttpException(
+        409,
+        'The order expired before the payment was confirmed. The payment went through and needs to be reconciled.',
+        'ORDER_CANCELLED_WITH_CONFIRMED_PAYMENT'
+      );
     }
 
     logger.info('Verifying buy product events for order ' + orderId + ' with tx hash ' + txHash);
@@ -320,88 +313,6 @@ export async function getLatestOrder(userId: string): Promise<OrderResponse> {
     }
     return ordersMappers.mapOrderToResponse(order);
   }
-
-
-async function payForOrderWithInternalWallet(order: OrderForCheckoutEntry): Promise<OrderResponse> {
-  const walletAddress = process.env.STRIPE_WALLET_ADDRESS;
-  const privateKey = process.env.STRIPE_WALLET_PRIVATE_KEY;
-  if (!walletAddress || !privateKey) {
-    // TODO: we should offer a refund if there is an error here
-    throw new HttpException(500, 'Stripe wallet address is not set', 'STRIPE_WALLET_ADDRESS_NOT_SET');
-  }
-  let orderTotal = order.orderItems.reduce(
-    (sum: number, item: any) => sum + item.product.price * item.items, 0
-  );
-
-  let deliveryFee = 0;
-  if (order.deliveryId) {
-    const delivery = await dbOrders.findOrderDeliveryById(order.deliveryId);
-    if (delivery && delivery.method === DeliveryMethod.HOME && delivery.price) {
-        deliveryFee = delivery.price;
-    }
-  }
-
-  if (!await OnChainBalancesService.canUserPayUSDC(walletAddress, orderTotal + deliveryFee)) {
-    // TODO: we should offer a refund if there is an error here
-    throw new HttpException(500, 'Unable to pay for order with internal wallet', 'INTERNAL_WALLET_PAYMENT_FAILED');
-  }
-
-  if (!order.buyer) {
-    throw new HttpException(400, 'Order Buyer not found', 'BUYER_NOT_FOUND');
-  }
-
-  const txs = await OnChainProductsService.buyProductsTxs(
-    order.orderItems.map((item) => item.product.tokenId ?? ''),
-    order.orderItems.map((item) => item.items),
-    orderTotal,
-    deliveryFee,
-    order.buyer.walletAddress,
-  );
-
-  let txHash: string = "";
-  try {
-    txHash = await OnChainProductsService.multicallBuyProductsTxs(txs, walletAddress, privateKey);
-    logger.info('Multicall buy products txs successful, tx hash: ' + txHash);
-  } catch (error) {
-    // TODO: we should offer a refund if there is an error here
-    logger.error('Error multicall buy products txs: ' + error);
-    throw new HttpException(500, 'Unable to pay for order with internal wallet', 'INTERNAL_WALLET_PAYMENT_FAILED');
-  }
-  // Wait 5 seconds so that the tx is confirmed on chain
-  await new Promise(resolve => setTimeout(resolve, 5000));
-
-  const verifiedOrder = await verifyOrderPayment(order.id, txHash);
-  return verifiedOrder;
-}
-
-export async function processOrderStripePayment(orderId: string, paymentIntentId: string, amount_usd: number): Promise<void> {
-    logger.info(
-        'Processing stripe payment for order ' + orderId + ' with paymentIntentId ' + paymentIntentId + ' and  amount_usd ' + amount_usd
-    );
-    const order = await dbOrders.findOrderByIdForCheckout(orderId);
-    if (!order) {
-      throw new HttpException(404, 'Order not found', 'ORDER_NOT_FOUND');
-    }
-    if (order.status !== OrderStatus.PENDING_PAYMENT) {
-      throw new HttpException(400, 'Only pending payment orders can be processed', 'CANNOT_PROCESS_PAID_ORDER');
-    }
-    const orderTotal = order.orderItems.reduce(
-      (sum: number, item: any) => sum + item.product.price * item.items, 0
-    );
-    if (orderTotal > amount_usd) {
-      throw new HttpException(
-        400, 'Amount paid is less than the order total', 'AMOUNT_PAID_IS_LESS_THAN_ORDER_TOTAL'
-      );
-    }
-    if (order.stripePaymentId) {
-      // If something failed before, stripe will keep calling this for a while, so we need to ignore it
-      logger.info('Order already has a stripe payment, ignoring');
-      return;
-    }
-    await dbOrders.registerStripePayment(orderId, paymentIntentId);
-    await payForOrderWithInternalWallet(order);
-    logger.info('Successfully processed stripe payment for order ' + orderId);
-}
 
 
 async function notifyProducerEmail(order: OrderWithItemsEntry): Promise<void> {

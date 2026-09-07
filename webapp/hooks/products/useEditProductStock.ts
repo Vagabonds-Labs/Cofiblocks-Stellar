@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import { productService, Product } from '@/services/api/products'
 import { walletService } from '@/services/wallet/walletService'
-import { useWalletLogin } from '@/hooks/auth/useWalletLogin'
-import { useOptionalCavos } from '@/hooks/auth/useOptionalCavos'
 
 interface UseEditProductStockProps {
   product: Product
@@ -18,8 +16,6 @@ export function useEditProductStock({
   t,
 }: UseEditProductStockProps) {
   const [stockValue, setStockValue] = useState<number>(product.currentStock)
-  const { cavos } = useOptionalCavos()
-  const { connectWalletWithoutSignature, disconnectWallet } = useWalletLogin()
   const [isUpdatingStock, setIsUpdatingStock] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [showSuccess, setShowSuccess] = useState(false)
@@ -66,16 +62,8 @@ export function useEditProductStock({
       const { tx } = await productService.updateStock(productId, stockValue)
 
       if (tx) {
-        await walletService.executeTransactions([{
-          contractAddress: tx.contract_address,
-          entrypoint: tx.entrypoint,
-          calldata: tx.calldata,
-        }], connectWalletWithoutSignature, disconnectWallet, cavos)
-
-        // wait for transaction to be confirmed for 4 seconds
-        await new Promise(resolve => setTimeout(resolve, 4000))
-
-        await productService.updateStockSync(productId)
+        const signedXdr = await walletService.signTransaction(tx)
+        await productService.submitStockUpdate(productId, signedXdr)
       }
       // Refresh product data to get updated stock
       const productData = await productService.getProductById(productId)

@@ -8,17 +8,14 @@ import { mapProductToResponse } from "@/services/mappers/ordersMappers";
 import { OrderItemResponse } from "./types/Orders";
 import * as OnChainProductsService from '@/services/onchain/OnChainProductsService';
 import * as NotificationService from './NotificationService';
-import { ChainClient } from "@/lib/CofiblocksContracts/ChainClient";
 import { logger } from "@/lib/logger";
-import { TransactionDetails, TransactionType } from "@/lib/CofiblocksContracts/types/transactions";
-import { createStripeProduct, disableStripeProduct } from "../stripe/stripeService";
-import { DbStripeProducts } from "../db/dbStripeProducts";
+import { PreparedTransaction } from "@/lib/StellarContracts/types/transactions";
+import { ContractFactory } from "@/lib/StellarContracts";
 
 const dbProducts = new DbProducts();
 const dbProductTx = new DbProductTx();
 const dbUsers = new DbUsers();
 const dbOrders = new DbOrders();
-const dbStripeProducts = new DbStripeProducts();
 
 export async function assertProductStockIsEditable(productId: string, userId: string) {
   const product = await dbProducts.findProductByIdForUpdate(productId);
@@ -106,7 +103,7 @@ export async function deployProduct(
   product_id: string,
   caller_wallet: string,
   is_roaster: boolean,
-): Promise<ChainClient> {
+): Promise<PreparedTransaction> {
   let producerAddress = caller_wallet;
   const product = await dbProducts.findProductByIdWithFarm(product_id);
   if (!product) {
@@ -122,11 +119,13 @@ export async function deployProduct(
     producerAddress = owner.walletAddress;
   }
 
-  const transactionDetails = await OnChainProductsService.createProductTx(
-    initialStock, priceUSD, producerAddress, product.id
-  );
+  // El productor asociado sólo tiene sentido cuando publica un tostador: para un
+  // productor sería él mismo. En el contrato es `Option<Address>`.
+  const associatedProducer = is_roaster ? producerAddress : null;
 
-  return transactionDetails;
+  return OnChainProductsService.createProductTx(
+    caller_wallet, initialStock, priceUSD, associatedProducer, product.id
+  );
 }
 
 export async function getAllProducts(status?: ProductStatus, filters?: ProductFilters): Promise<
@@ -307,13 +306,6 @@ export async function deleteProduct(productId: string, userId: string): Promise<
     throw new HttpException(400, 'Cannot delete product with reserved stock', 'PRODUCT_HAS_RESERVED_STOCK');
   }
 
-  // Disable stripe product
-  const stripeProduct = await dbStripeProducts.findStripeProductByProductId(productId);
-  if (stripeProduct) {
-    logger.info('Disabling stripe product for product: ' + stripeProduct.stripeProductId);
-    await dbStripeProducts.disableStripeProduct(productId);
-    await disableStripeProduct(stripeProduct.stripeProductId);
-  }
 
   // Delete product
   await dbProducts.deleteProduct(productId);
@@ -324,9 +316,15 @@ export async function getProductsByIds(productIds: string[]) {
 }
 
 
+/**
+ * Cierra la publicación de un producto.
+ *
+ * Recibe el XDR firmado por el vendedor: el backend lo envía con fee-bump y saca
+ * el hash del submit.
+ */
 export async function verifyProductDeployment(
-  productId: string, callerId: string, callerWalletAddress: string, txHash: string
-): Promise<{ initialStock: number, tokenId: string, price: number }> {
+  productId: string, callerId: string, callerWalletAddress: string, signedXdr: string
+): Promise<{ initialStock: number, tokenId: string, price: number, txHash: string }> {
   // Verify product exists and get ownership info
   const product = await dbProducts.findProductByIdForOwnership(productId);
   if (!product) {
@@ -337,6 +335,8 @@ export async function verifyProductDeployment(
   if (product.ownerId !== callerId) {
     throw new HttpException(403, 'You are not the owner of this product', 'PRODUCT_OWNERSHIP_REQUIRED');
   }
+
+  const { hash: txHash } = await new ContractFactory().getTxSubmitter().submitSigned(signedXdr);
 
   // Check if tx_hash already exists (this will throw if it does)
   const txExists = await dbProductTx.findProductTxByTxHash(txHash);
@@ -367,29 +367,19 @@ export async function verifyProductDeployment(
   await dbProducts.updateProductStatus(productId, ProductStatus.PUBLISHED);
   await NotificationService.pushInfoNotification(callerId, 'PRODUCT_DEPLOYMENT_SUCCESSFUL', []);
 
-  // Create stripe product
-  let stripeReady = false;
-  try {
-    const stripeProduct = await createStripeProduct(
-      updatedProduct.title, updatedProduct.description || '', updatedProduct.price, updatedProduct.imageUrl || ''
-    );
-    await dbStripeProducts.insertNewProduct(product.id, stripeProduct.productId, stripeProduct.priceId);
-    stripeReady = true;
-  } catch (error) {
-    logger.error('Error creating stripe product: ' + error);
-  }
 
-  return { initialStock, tokenId, price };
+  return { initialStock, tokenId, price, txHash };
 }
 
 
-export async function updateProductStock(productId: string, userId: string, updatedStock: number): 
-Promise<{ tx: TransactionDetails | null, txType: TransactionType | null }> {
+export async function updateProductStock(
+  productId: string, userId: string, updatedStock: number, callerWalletAddress: string
+): Promise<{ tx: PreparedTransaction | null }> {
   const product = await assertProductStockIsEditable(productId, userId);
   if (product.status === ProductStatus.CREATION_REQUEST) {
     logger.info('Product not deployed yet, updating current stock');
     await dbProducts.updateProduct(productId, { currentStock: updatedStock });
-    return { tx: null, txType: null };
+    return { tx: null };
   }
 
   if (!product.tokenId) {
@@ -398,17 +388,32 @@ Promise<{ tx: TransactionDetails | null, txType: TransactionType | null }> {
   const currentStockOnChain = await OnChainProductsService.getProductStock(product.tokenId);
   logger.info('Current stock on chain: ' + currentStockOnChain + ' for tokenId: ' + product.tokenId);
   if ( currentStockOnChain < updatedStock ) {
-    const requiredMint = updatedStock - currentStockOnChain;
-    logger.info('Minting is required for the new stock, need to mint ' + requiredMint);
-    const tx = await OnChainProductsService.mintProductStock(product.tokenId, requiredMint);
-    return { tx: tx.getTransactionDetails(), txType: tx.getTransactionType() };
+    const missingStock = updatedStock - currentStockOnChain;
+    logger.info('Stock needs to grow on chain by ' + missingStock);
+    // `add_stock` ya no mintea nada: incrementa un contador en storage.
+    const tx = await OnChainProductsService.addProductStock(
+      callerWalletAddress, product.tokenId, missingStock
+    );
+    return { tx };
   }
  
   logger.info('Requested stock is less than current stock, updating current stock');
   await dbProducts.updateProduct(productId, { currentStock: updatedStock });
-  return { tx: null, txType: null };
+  return { tx: null };
 }
 
+
+/**
+ * Cierra el ajuste de stock: envía la transacción firmada y sincroniza Postgres
+ * con lo que quedó on-chain.
+ */
+export async function submitProductStockUpdate(
+  productId: string, signedXdr: string
+): Promise<void> {
+  const { hash } = await new ContractFactory().getTxSubmitter().submitSigned(signedXdr);
+  logger.info('Stock update transaction confirmed with hash ' + hash);
+  await syncProductStock(productId);
+}
 
 export async function syncProductStock(productId: string): Promise<void> {
   const product = await dbProducts.findProductByIdForUpdate(productId);

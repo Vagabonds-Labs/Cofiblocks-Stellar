@@ -3,7 +3,6 @@
 import { createContext, useContext } from 'react'
 import { useUserData, useAuthWatcher, useWalletWatcher } from '@/services/auth'
 import type { User } from '@/services/auth/types'
-import { useCavosSession } from '@/hooks/auth/useCavosSession'
 
 interface UserContextType {
   user: User | null
@@ -22,12 +21,11 @@ export function useUser() {
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { user, loading, error, loadUser, setUser } = useUserData();
-  const { isCavosAuthenticated } = useCavosSession();
 
   const clearUser = () => setUser(null);
 
   useAuthWatcher(loadUser, clearUser);
-  useWalletWatcher(user, isCavosAuthenticated, clearUser); // ← se lo pasamos
+  useWalletWatcher(user, clearUser);
 
   return (
     <UserContext.Provider value={{ user, loading, error, refreshUser: loadUser }}>

@@ -412,13 +412,6 @@ export default function SaleDetailPage() {
               <p className="text-xs sm:text-sm text-gray-500 break-all">
                 <span className="font-medium">{t('my_orders.payment_tx')}</span> {order.paymentTx}
               </p>
-              {order.isStripeOrder && (
-                <div className="mt-2 inline-flex items-center px-3 py-1.5 rounded-lg bg-violet-100 border border-violet-200">
-                  <span className="text-xs sm:text-sm font-medium text-violet-800">
-                    {t('my_orders.paid_with_stripe', { defaultValue: 'Paid with Stripe' })}
-                  </span>
-                </div>
-              )}
             </div>
           )}
 

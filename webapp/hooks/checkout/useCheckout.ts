@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { orderService, OrderItem, Order, CheckoutOrderTransaction, CheckoutOrderResponse } from '@/services/api/orders'
+import { orderService, OrderItem, Order, CheckoutOrderResponse } from '@/services/api/orders'
 import { eventsService, Event } from '@/services/api/events'
 import { ApiError } from '@/lib/api/types'
 import { useTranslations } from 'next-intl'
@@ -188,7 +188,7 @@ export function useCheckout(orderId: string) {
     }
   }, [deliveryOption])
 
-  const handleCheckout = async (stripe_checkout: boolean): Promise<CheckoutOrderResponse | null> => {
+  const handleCheckout = async (): Promise<CheckoutOrderResponse | null> => {
     setCheckoutError(null)
 
     // Validate delivery option
@@ -211,7 +211,6 @@ export function useCheckout(orderId: string) {
       const checkoutData = {
         id: orderId,
         delivery_event_id: deliveryOption === 'pickup' ? selectedEventId! : undefined,
-        stripe_checkout: stripe_checkout,
         delivery_home: deliveryOption === 'delivery' ? {
           country: deliveryForm.country,
           state: deliveryForm.state.toLowerCase(),

@@ -1,48 +1,27 @@
 'use client'
 
 import { useEffect } from 'react'
-import { connect } from 'starknetkit'
+import { walletService } from '@/services/wallet/walletService'
 
-export function useWalletWatcher(
-  user: any,
-  isCavosAuthenticated: boolean,
-  logoutCallback: () => void
-) {
+/**
+ * Vigila que la wallet conectada siga siendo la de la sesión.
+ *
+ * Ya no hay que distinguir entre proveedores: sólo se entra por wallet.
+ */
+export function useWalletWatcher(user: any, logoutCallback: () => void) {
   useEffect(() => {
-    if (!user?.walletProvider) return;
+    if (!user?.walletAddress) return
 
     const interval = setInterval(async () => {
+      const address = await walletService.trySilent()
+      if (!address) return
 
-      if (user.walletProvider === "cavos") {
-        if (!isCavosAuthenticated) {
-          console.warn("WalletWatcher: Cavos session expired");
-          logoutCallback();
-        }
-        return;
+      if (address !== user.walletAddress) {
+        console.warn('WalletWatcher: Wallet mismatch')
+        logoutCallback()
       }
+    }, 30_000)
 
-      if (user.walletProvider === "starknet") {
-        let account: string | null = null;
-
-        try {
-          const result = await connect({ modalMode: "neverAsk" });
-          account = result?.connectorData?.account ?? null;
-        } catch (err) {
-          console.error("WalletWatcher: Silent reconnect failed", err);
-          //return logoutCallback();
-        }
-
-        if (!account) return;
-
-        if (account.toLowerCase() !== user.walletAddress.toLowerCase()) {
-          console.warn("WalletWatcher: Wallet mismatch");
-          //return logoutCallback();
-        }
-      }
-
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [user, isCavosAuthenticated, logoutCallback]);
+    return () => clearInterval(interval)
+  }, [user, logoutCallback])
 }
-

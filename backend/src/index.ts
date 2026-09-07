@@ -15,7 +15,6 @@ import authRoute from './routes/auth';
 import eventsRoute from './routes/events';
 import sellsRoute from './routes/sells';
 import adminRoute from './routes/admin';
-import stripeRoute from './routes/stripe';
 import configRoute from './routes/config';
 import { errorHandlerMiddleware } from './middleware/errorHandler';
 import { requestId } from './middleware/requestId';
@@ -44,7 +43,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow server-to-server / curl / Stripe / webhooks
+      // Allow server-to-server / curl / webhooks
       if (!origin) return callback(null, true);
 
       // Always allow explicit trusted origins
@@ -64,13 +63,6 @@ app.use(
 );
 
 app.options("*", cors());
-
-// IMPORTANT: Stripe webhook MUST come before express.json()
-app.use(
-  "/api/stripe/webhook",
-  express.raw({ type: "application/json" })
-);
-
 
 app.use(express.json());
 app.use(cookieParser());
@@ -102,7 +94,6 @@ app.use("/api/auth", authRoute);
 app.use("/api/events", eventsRoute);
 app.use("/api/sells", sellsRoute);
 app.use("/api/admin", adminRoute);
-app.use("/api/stripe", stripeRoute);
 app.use("/api/config", configRoute);
 
 // Error handling middleware (must be last)

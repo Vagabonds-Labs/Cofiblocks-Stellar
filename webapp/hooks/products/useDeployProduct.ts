@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+
 import { walletService } from '@/services/wallet/walletService'
-import { useWalletLogin } from '@/hooks/auth/useWalletLogin'
 import { productService } from '@/services/api/products'
-import { useOptionalCavos } from '@/hooks/auth/useOptionalCavos'
 
 export function useDeployProduct({
   product,
@@ -14,8 +13,6 @@ export function useDeployProduct({
   onSuccess?: () => void
 }) {
   const [isDeploying, setIsDeploying] = useState(false)
-  const { connectWalletWithoutSignature, disconnectWallet } = useWalletLogin()
-  const { cavos } = useOptionalCavos()
 
   const deploy = useCallback(async () => {
     if (isDeploying) return
@@ -23,31 +20,21 @@ export function useDeployProduct({
     setIsDeploying(true)
 
     try {
-      // 1. Ask backend for prepared transaction
-      const deployResponse = await productService.deployProduct({
+      // 1. El backend arma y simula la transacción.
+      const prepared = await productService.deployProduct({
         initialStock: product.currentStock,
         price: product.price,
         product_id: product.id,
       })
 
-      const tx = deployResponse.transaction
+      // 2. La wallet la firma.
+      const signedXdr = await walletService.signTransaction(prepared)
 
-      // 2. Execute on-chain
-      const txHash = await walletService.executeTransactions([
-        {
-          contractAddress: tx.contract_address,
-          entrypoint: tx.entrypoint,
-          calldata: tx.calldata,
-        },
-      ], connectWalletWithoutSignature, disconnectWallet, cavos)
-
-      // wait for 5 seconds while the transaction is being processed on-chain
-      await new Promise((resolve) => setTimeout(resolve, 5000))
-
-      // 3. Notify backend
+      // 3. El backend la envía con fee-bump y verifica el evento. Ya no hace
+      //    falta esperar 5 segundos a ciegas: el submit hace polling.
       await productService.deployCallback({
         product_id: product.id,
-        tx_hash: txHash,
+        signed_xdr: signedXdr,
       })
 
       onSuccess?.()
@@ -57,14 +44,7 @@ export function useDeployProduct({
     } finally {
       setIsDeploying(false)
     }
-  }, [
-    product,
-    cavos,
-    connectWalletWithoutSignature,
-    disconnectWallet,
-    isDeploying,
-    onSuccess,
-  ])
+  }, [product, isDeploying, onSuccess])
 
   return {
     deploy,

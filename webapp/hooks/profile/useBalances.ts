@@ -4,16 +4,21 @@ import { useState, useEffect } from 'react'
 
 import { onchainService } from '@/services/api/onchain'
 import { formatBalance } from '@/utils/formatting'
-import { PaymentToken } from '@/types/contracts'
 
+/**
+ * Balances de la cuenta. Sólo XLM y USDC: se fueron STRK, USDT y USDC.e junto
+ * con el contrato de swap.
+ *
+ * `hasUsdcTrustline` importa porque sin trustline la cuenta no puede recibir
+ * USDC — el backend ofrece crearla patrocinada.
+ */
 export function useBalances(user: any, loadingUser: boolean, t: any) {
   const [loadingBalances, setLoadingBalances] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasUsdcTrustline, setHasUsdcTrustline] = useState(true)
   const [balances, setBalances] = useState({
-    starks: '0.00',
-    usdt: '0.00',
+    xlm: '0.00',
     usdc: '0.00',
-    usdc_bridged: '0.00',
   })
 
   const fetchBalances = async () => {
@@ -26,12 +31,10 @@ export function useBalances(user: any, loadingUser: boolean, t: any) {
       const res = await onchainService.getBalanceOf()
 
       setBalances({
-        starks: formatBalance(res.balances.STRK, PaymentToken.STRK) || '0.00',
-        usdt: formatBalance(res.balances.USDT, PaymentToken.USDT) || '0.00',
-        usdc: formatBalance(res.balances.USDC, PaymentToken.USDC) || '0.00',
-        usdc_bridged: formatBalance(res.balances.USDC_BRIDGED, PaymentToken.USDC) || '0.00',
+        xlm: formatBalance(res.balances.XLM) || '0.00',
+        usdc: formatBalance(res.balances.USDC) || '0.00',
       })
-
+      setHasUsdcTrustline(res.trustlines.USDC)
     } catch (err: any) {
       console.error(err)
       setError(err?.message || t('balances.error_loading'))
@@ -46,6 +49,7 @@ export function useBalances(user: any, loadingUser: boolean, t: any) {
 
   return {
     balances,
+    hasUsdcTrustline,
     loadingBalances,
     fetchBalances,
     balancesError: error,

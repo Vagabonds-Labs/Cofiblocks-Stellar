@@ -5,10 +5,8 @@ import { useSells } from './useSells'
 import { Order } from '@/services/api/orders'
 import { useUser } from '@/lib/providers/UserProvider'
 import { sellsService } from '@/services/api/sells'
-import { useWalletLogin } from '@/hooks/auth/useWalletLogin'
 import { walletService } from '@/services/wallet/walletService'
 import { useTranslations } from 'next-intl'
-import { useOptionalCavos } from '@/hooks/auth/useOptionalCavos'
 
 export type FilterType = 'pending' | 'completed' | 'claims'
 
@@ -23,8 +21,6 @@ export function useMySales() {
   const t = useTranslations()
   const { user } = useUser()
   const { orders, loading, error, refetch } = useSells()
-  const { connectWalletWithoutSignature, disconnectWallet } = useWalletLogin()
-  const { cavos } = useOptionalCavos()
   const [activeFilter, setActiveFilter] = useState<FilterType>('pending')
   const [contractClaimBalance, setContractClaimBalance] = useState<string | null>(null)
   const [loadingContractBalance, setLoadingContractBalance] = useState(false)
@@ -82,18 +78,12 @@ export function useMySales() {
     setClaimSuccessMessage(null)
     
     try {
-      const tx = await sellsService.getClaimTx()
-      const txHash = await walletService.executeTransactions([{
-        contractAddress: tx.tx.contract_address,
-        entrypoint: tx.tx.entrypoint,
-        calldata: tx.tx.calldata,
-      }], connectWalletWithoutSignature, disconnectWallet, cavos)
-      console.log('txHash', txHash)
+      const prepared = await sellsService.getClaimTx()
+      const signedXdr = await walletService.signTransaction(prepared)
 
-      // wait for the tx to be mined in 3 seconds
-      await new Promise(resolve => setTimeout(resolve, 3000))
-
-      await sellsService.claimCallback(txHash)
+      // El backend envía con fee-bump y espera la confirmación: no hace falta
+      // adivinar cuánto tarda en minarse.
+      await sellsService.claimCallback(signedXdr)
       
       // Refresh orders data to update claim balances
       await refetch()
@@ -116,7 +106,7 @@ export function useMySales() {
     } finally {
       setClaimingMoney(false)
     }
-  }, [refetch, user?.walletAddress, connectWalletWithoutSignature, disconnectWallet, cavos])
+  }, [refetch, user?.walletAddress])
 
   // Always fetch contract claim balance when user has wallet address
   useEffect(() => {

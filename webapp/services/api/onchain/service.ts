@@ -4,14 +4,13 @@
  */
 
 import { api } from '@/lib/api';
-import { BalanceResponse, ContractsInfoResponse, TransactionResponse } from './types';
-import { PaymentToken, SwapToken } from '@/types/contracts';
+import { BalanceResponse, ContractsInfoResponse, TrustlineResponse } from './types';
+import { PaymentToken, PreparedTransaction } from '@/types/contracts';
 
 export class OnchainService {
   /**
-   * Get balance for a wallet address
-   * @param wallet - Optional wallet address. If not provided, uses authenticated user's wallet
-   * @returns Balance response with wallet address and token balances (STRK, USDC, USDT)
+   * Balances de una wallet. Sin `wallet`, los del usuario autenticado.
+   * Devuelve XLM y USDC, más si la cuenta tiene trustline a USDC.
    */
   async getBalanceOf(wallet?: string): Promise<BalanceResponse> {
     const endpoint = wallet 
@@ -23,11 +22,29 @@ export class OnchainService {
   }
 
   async withdraw(
-    token: PaymentToken | 'USDC_BRIDGED', 
+    token: PaymentToken,
     amount: string, 
     withdrawAddress: string
-  ): Promise<TransactionResponse> {
-    const response = await api.post<{data: TransactionResponse}>('/onchain/withdraw', { token, amount, withdrawAddress });
+  ): Promise<PreparedTransaction> {
+    const response = await api.post<{data: PreparedTransaction}>(
+      '/onchain/withdraw', { token, amount, withdrawAddress }
+    );
+    return response.data;
+  }
+
+  /**
+   * Trustline a USDC patrocinada por el backend.
+   * `required: false` significa que la cuenta ya la tiene.
+   */
+  async getUSDCTrustline(): Promise<TrustlineResponse> {
+    const response = await api.get<{data: TrustlineResponse}>('/onchain/usdc_trustline');
+    return response.data;
+  }
+
+  async submitUSDCTrustline(signedXdr: string): Promise<{ tx_hash: string }> {
+    const response = await api.post<{data: { tx_hash: string }}>(
+      '/onchain/usdc_trustline/callback', { signed_xdr: signedXdr }
+    );
     return response.data;
   }
 
@@ -36,21 +53,20 @@ export class OnchainService {
     return response.data;
   }
 
-  async mintSepoliaUSDC(): Promise<void> {
-    await api.get<{data: void}>('/onchain/mint_sepolia_usdc');
-  }
-
-  async getSwapPrice(token: SwapToken, amount: number): Promise<string> {
-    const response = await api.get<{data: string}>(`/onchain/swap_price?token=${token}&amount=${amount}`);
-    return response.data;
-  }
-
-  async swapTokenForUSDC(token: SwapToken, amount: number): Promise<TransactionResponse[]> {
-    const response = await api.post<{data: TransactionResponse[]}>('/onchain/swap', { token, amount });
+  /**
+   * Extiende el TTL de un producto on-chain.
+   *
+   * Soroban archiva el estado que no se toca durante mucho tiempo, y la
+   * siguiente operación sobre un producto archivado falla hasta que alguien lo
+   * restaura. Es un modo de fallo que no existía en Starknet.
+   */
+  async touchProduct(tokenId: string): Promise<{ tx_hash: string }> {
+    const response = await api.post<{data: { tx_hash: string }}>(
+      `/onchain/product/${encodeURIComponent(tokenId)}/touch`, {}
+    );
     return response.data;
   }
 }
 
 // Export singleton instance
 export const onchainService = new OnchainService();
-

@@ -10,82 +10,19 @@ import { Header } from '@/components/header/Header'
 
 export const metadata: Metadata = {
   title: 'CofiBlocks - OnChain Coffee Marketplace',
-  description: 'Discover and purchase premium coffee from Costa Rica using StarkNet technology',
+  description: 'Discover and purchase premium coffee from Costa Rica using Stellar technology',
 }
 
-type CavosRuntimeConfig = {
-  appId: string
-  network: 'mainnet' | 'sepolia'
-  starknetRpcUrl: string,
-  paymasterApiKey: string,
-  session: {
-    defaultPolicy: {
-      allowedContracts: string[]
-      maxCallsPerTx: number
-      spendingLimits: {
-        token: string
-        limit: string
-      }[]
-    }
-  }
-}
-
-const CAVOS_CONFIG_MAX_ATTEMPTS = 5
-const CAVOS_CONFIG_MIN_DELAY_MS = 3000
-const CAVOS_CONFIG_MAX_DELAY_MS = 7000
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function randomDelayMs() {
-  return Math.floor(
-    Math.random() * (CAVOS_CONFIG_MAX_DELAY_MS - CAVOS_CONFIG_MIN_DELAY_MS + 1)
-  ) + CAVOS_CONFIG_MIN_DELAY_MS
-}
-
-function getCavosConfigUrl(backendBaseUrl: string) {
-  const normalizedBaseUrl = backendBaseUrl
-    .replace(/\/+$/, '')
-    .replace(/\/api$/, '')
-
-  return `${normalizedBaseUrl}/api/config/cavos`
-}
-
-async function getCavosConfigFromBackend(): Promise<CavosRuntimeConfig | null> {
-  const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL
-  if (!backendBaseUrl) return null
-  const cavosConfigUrl = getCavosConfigUrl(backendBaseUrl)
-
-  for (let attempt = 1; attempt <= CAVOS_CONFIG_MAX_ATTEMPTS; attempt += 1) {
-    try {
-      const response = await fetch(cavosConfigUrl, {
-        method: 'GET',
-        cache: 'no-store',
-      })
-
-      if (response.ok) {
-        const payload = await response.json() as { data?: CavosRuntimeConfig }
-        if (payload?.data) {
-          return payload.data
-        }
-      }
-    } catch {
-      // Retry below until attempts are exhausted.
-    }
-
-    if (attempt < CAVOS_CONFIG_MAX_ATTEMPTS) {
-      await sleep(randomDelayMs())
-    }
-  }
-
-  return null
-}
-
+/**
+ * El layout ya no busca configuración en el backend antes de renderizar.
+ *
+ * Antes tenía que traer la config de Cavos con hasta 5 reintentos y esperas de
+ * 3 a 7 segundos, bloqueando el render. La conexión de wallet no necesita nada
+ * de eso: el Stellar Wallets Kit se inicializa en el cliente cuando hace falta.
+ */
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale()
   const messages = await getMessages()
-  const cavosConfig = await getCavosConfigFromBackend()
 
   return (
     <html lang={locale}>
@@ -98,9 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="flex flex-col min-h-screen">
-        <AppProviders
-          cavosConfig={cavosConfig ?? undefined}
-        >
+        <AppProviders>
           <NextIntlClientProvider messages={messages}>
             <Header />
             <div className="flex-1">{children}</div>

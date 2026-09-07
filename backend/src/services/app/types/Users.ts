@@ -4,7 +4,8 @@ import { TokenPair } from "./Auth";
 export interface RegisterUserData {
     walletAddress: string;
     walletProvider?: string;
-    signature: string[];
+    /** Firma SEP-53 en base64. Antes era el par (r, s) de Starknet. */
+    signature: string;
     nonce: string;
   }
 

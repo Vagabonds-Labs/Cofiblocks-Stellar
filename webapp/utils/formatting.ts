@@ -1,21 +1,15 @@
 import { PaymentToken } from "../types/contracts";
 
 
-export function formatBalance(balance: string, token: PaymentToken): string {
+/**
+ * Todos los activos de Stellar usan 7 decimales, XLM y USDC incluidos. Antes
+ * eran 18 para STRK y 6 para USDC.
+ */
+const STELLAR_DECIMALS = 7n;
+
+export function formatBalance(balance: string, _token?: PaymentToken): string {
   const n = BigInt(balance);
-
-  let decimals = 0n;
-  switch (token) {
-    case PaymentToken.STRK:
-      decimals = 18n;
-      break;
-    case PaymentToken.USDC:
-    case PaymentToken.USDT:
-      decimals = 6n;
-      break;
-  }
-
-  const divisor = 10n ** decimals;
+  const divisor = 10n ** STELLAR_DECIMALS;
 
   const integerPart = n / divisor;
   const fractionalPart = n % divisor;
@@ -38,7 +32,8 @@ export function formatBalance(balance: string, token: PaymentToken): string {
   
   export function formatDisplayName(walletAddress?: string | null, userName?: string | null): string {
     if (walletAddress) {
-      return `${walletAddress.substring(0, 9)}...`
+      // Las direcciones StrKey son largas y sin prefijo: se muestra la punta.
+      return `${walletAddress.substring(0, 4)}…${walletAddress.slice(-4)}`
     }
   
     if (userName) {
@@ -49,41 +44,13 @@ export function formatBalance(balance: string, token: PaymentToken): string {
   }
 
   /**
-   * Formats an address for clipboard copying.
-   * Ensures the address part (after 0x) is exactly 64 characters long
-   * by padding with "00" at the front if needed.
-   * 
-   * @param address - The address to format (e.g., "0x123" or "0xabc...")
-   * @returns The formatted address with 64 characters after "0x"
+   * Las direcciones de Stellar son StrKey completas: se copian tal cual, sin
+   * el relleno a 64 caracteres que hacía falta en Starknet.
    */
   export function formatAddressForClipboard(address: string): string {
-    if (!address) return address;
-    
-    // Remove 0x prefix if present
-    const addressPart = address.startsWith('0x') ? address.slice(2) : address;
-    
-    // Calculate how many "00" pairs we need to add
-    const currentLength = addressPart.length;
-    const targetLength = 64;
-    
-    if (currentLength >= targetLength) {
-      // If already long enough, return as is with 0x prefix
-      return `0x${addressPart}`;
-    }
-    
-    // Calculate padding needed
-    const paddingNeeded = targetLength - currentLength;
-    // Pad with "00" pairs (each pair is 2 characters)
-    const paddingPairs = Math.ceil(paddingNeeded / 2);
-    const padding = '00'.repeat(paddingPairs);
-    
-    // Take only the needed padding length
-    const finalPadding = padding.slice(0, paddingNeeded);
-    
-    // Return formatted address with 0x prefix
-    return `0x${finalPadding}${addressPart}`;
+    return address ?? '';
   }
-  
+
   export const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',

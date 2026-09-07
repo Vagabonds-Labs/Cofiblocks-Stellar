@@ -86,11 +86,7 @@ router.post('/deploy', authenticate, requireSeller, validate(deployProductSchema
       const transactionDetails = await ProductService.deployProduct(
         initialStock, price, product_id, walletAddress, is_roaster
       );
-      // Return transaction details using successResponse
-      successResponse(res, {
-        transaction: transactionDetails.getTransactionDetails(),
-        type: transactionDetails.getTransactionType(),
-      }, 'Transaction details fetched successfully', 200);
+      successResponse(res, transactionDetails, 'Transaction details fetched successfully', 200);
   }
 );
 
@@ -108,16 +104,16 @@ router.post(
   validate(deployCallbackSchema),
   async (req: Request, res: Response, next) => {
     const userId = req.user!.userId;
-    const { product_id, tx_hash } = req.body;
+    const { product_id, signed_xdr } = req.body;
     const { walletAddress } = req.user!;
-    const { initialStock, tokenId, price } = await ProductService.verifyProductDeployment(
-      product_id, userId, walletAddress, tx_hash
+    const { initialStock, tokenId, price, txHash } = await ProductService.verifyProductDeployment(
+      product_id, userId, walletAddress, signed_xdr
     );
 
     // Return success response
     successResponse(res, {
       product_id,
-      tx_hash,
+      tx_hash: txHash,
       token_id: tokenId,
       price: price,
       initial_stock: initialStock,
@@ -163,15 +159,29 @@ router.patch('/:id/stock', authenticate, requireSeller, validate(updateProductSt
   const userId = req.user!.userId;
   const { id } = req.params;
   const { currentStock } = req.body;
-  const { tx, txType } = await ProductService.updateProductStock(id, userId, currentStock);
+  const { walletAddress } = req.user!;
+  const { tx } = await ProductService.updateProductStock(id, userId, currentStock, walletAddress);
   const msg = tx ? "Transaction required to update stock" : "Stock updated successfully";
-  successResponse(res, {tx, txType}, msg, 200);
+  successResponse(res, { tx }, msg, 200);
 });
 
-router.get('/:id/stock/sync', validate(updateProductStockCallbackSchema), async (req: Request, res: Response, next) => {
+router.post(
+  '/:id/stock/callback',
+  authenticate,
+  requireSeller,
+  validate(updateProductStockCallbackSchema),
+  async (req: Request, res: Response, next) => {
+    const { id } = req.params;
+    const { signed_xdr } = req.body;
+    await ProductService.submitProductStockUpdate(id, signed_xdr);
+    successResponse(res, null, 'Product stock updated successfully', 200);
+  }
+);
+
+router.get('/:id/stock/sync', async (req: Request, res: Response, next) => {
   const { id } = req.params;
   await ProductService.syncProductStock(id);
-  successResponse(res, null, 'Product stock updated successfully', 200);
+  successResponse(res, null, 'Product stock synced successfully', 200);
 });
 
 export default router;

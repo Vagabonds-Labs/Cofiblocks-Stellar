@@ -1,161 +1,172 @@
 "use client";
 
-import { connect, ConnectorData, StarknetWindowObject } from "starknetkit";
-import { authService } from "@/services/auth/authService";
-import { UnifiedWallet, UnifiedCall } from "./types";
+import { StellarWalletsKit, Networks } from "@creit.tech/stellar-wallets-kit";
+import { FreighterModule } from "@creit.tech/stellar-wallets-kit/modules/freighter";
+import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull";
+import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo";
+import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr";
+import { RabetModule } from "@creit.tech/stellar-wallets-kit/modules/rabet";
 
+import { authService } from "@/services/auth/authService";
+import { PreparedTransaction } from "@/types/contracts";
+
+const SELECTED_WALLET_KEY = "cofiblocks:selected-wallet";
+
+function networkFromEnv(): Networks {
+  return process.env.NEXT_PUBLIC_STELLAR_NETWORK === "mainnet"
+    ? Networks.PUBLIC
+    : Networks.TESTNET;
+}
+
+/**
+ * Acceso a la wallet del usuario.
+ *
+ * Reemplaza al `executeTransactions(calls[])` de Starknet, que mandaba un
+ * multicall. Acá el backend arma y simula la transacción entera, la wallet sólo
+ * la firma, y el backend la envía con fee-bump. Por eso el servicio devuelve el
+ * XDR firmado en vez de un hash: el hash lo saca el backend del submit, que es
+ * más confiable que confiar en el que reporte el cliente.
+ *
+ * Wallets soportadas: Freighter, xBull, Albedo, Lobstr y Rabet. WalletConnect
+ * requiere `@reown/appkit` y un projectId de Reown; se agrega como un módulo más
+ * en `init()` cuando esas dos cosas estén.
+ */
 class WalletService {
-  // -------------------------------------------------
-  // CHECK IF USER HAS A CONNECTED WALLET
-  // -------------------------------------------------
+  private initialized = false;
+
+  /** Idempotente: el kit se inicializa una sola vez, y sólo en el browser. */
+  private init(): void {
+    if (this.initialized || typeof window === "undefined") return;
+
+    StellarWalletsKit.init({
+      modules: [
+        new FreighterModule(),
+        new xBullModule(),
+        new AlbedoModule(),
+        new LobstrModule(),
+        new RabetModule(),
+      ],
+      network: networkFromEnv(),
+      selectedWalletId: window.localStorage.getItem(SELECTED_WALLET_KEY) ?? undefined,
+    });
+    this.initialized = true;
+  }
+
+  private rememberWallet(): void {
+    if (typeof window === "undefined") return;
+    const id = StellarWalletsKit.selectedModule?.productId;
+    if (id) window.localStorage.setItem(SELECTED_WALLET_KEY, id);
+  }
+
+  private forgetWallet(): void {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(SELECTED_WALLET_KEY);
+  }
+
+  /** Abre el modal de selección y devuelve la dirección conectada. */
+  async connect(): Promise<string> {
+    this.init();
+    const { address } = await StellarWalletsKit.authModal();
+    if (!address) throw new Error("Connection cancelled");
+    this.rememberWallet();
+    return address;
+  }
+
+  /** Reconecta en silencio si el usuario ya había elegido una wallet. */
+  async trySilent(): Promise<string | null> {
+    if (typeof window === "undefined") return null;
+    if (!window.localStorage.getItem(SELECTED_WALLET_KEY)) return null;
+    this.init();
+    try {
+      const { address } = await StellarWalletsKit.getAddress();
+      return address || null;
+    } catch {
+      return null;
+    }
+  }
+
   async isConnected(): Promise<boolean> {
     const user = authService.getCurrentUser();
-    if (!user?.walletProvider) return false;
-
-    if (user.walletProvider === "cavos") {
-      return authService.isAuthenticated(); // cavos session defines connectivity
-    }
-
-    if (user.walletProvider === "starknet") {
-      try {
-        const { wallet, connectorData } = await connect({ modalMode: "neverAsk" });
-        return Boolean(wallet && connectorData?.account);
-      } catch {
-        return false;
-      }
-    }
-
-    return false;
+    if (!user?.walletAddress) return false;
+    const address = await this.trySilent();
+    return address === user.walletAddress;
   }
 
-  async trySilent() {
+  async disconnect(): Promise<void> {
+    this.init();
     try {
-      const { wallet, connectorData } = await connect({ modalMode: "neverAsk" })
-      return wallet && connectorData?.account ? { wallet, connectorData } : null
-    } catch {
-      return null
+      await StellarWalletsKit.disconnect();
+    } finally {
+      this.forgetWallet();
     }
   }
 
-  private async ensureSameWalletConnected(
-    connectWalletWithoutSignature: () => Promise<{ 
-      wallet: StarknetWindowObject | null, connectorData: ConnectorData | null 
-    }>, disconnectWallet: () => Promise<void>
-  ): Promise<{ wallet: StarknetWindowObject | null, connectorData: ConnectorData | null }> {
-    const user = authService.getCurrentUser()
-    if (user?.walletProvider === "cavos") {
-      return { wallet: null, connectorData: null };
-    }
-    if (!user?.walletAddress) throw new Error("No wallet address found")
-    const targetAddress = user.walletAddress.toLowerCase()
-
-    // -------------------------------------------
-    // 1. TRY SILENT RECONNECT
-    // -------------------------------------------
-    const silent = await this.trySilent()
-    if (silent) {
-      const connected = silent.connectorData?.account?.toLowerCase()
-      if (connected === targetAddress) {
-        return { wallet: silent.wallet, connectorData: silent.connectorData };
-      }
-      console.warn("Wallet mismatch, user wallet changed silently")
-      await disconnectWallet()
-    }
-
-    const { wallet, connectorData } = await connectWalletWithoutSignature()
-    if (!wallet || !connectorData?.account) {
-      throw new Error("No wallet connected")
-    }
-    const connected = connectorData.account.toLowerCase()
-    if (connected !== targetAddress) {
-      throw new Error("Wallet mismatch, please connect the correct wallet")
-    }
-    return { wallet, connectorData };
-  }
-
-  async executeTransactions(
-    calls: UnifiedCall[],
-    connectWalletWithoutSignature: () => Promise<{ 
-      wallet: StarknetWindowObject | null, connectorData: ConnectorData | null 
-    }>, 
-    disconnectWallet: () => Promise<void>,
-    cavos?: { execute: Function },
-  ): Promise<string> {
-    if (!Array.isArray(calls)) {
-      throw new Error("executeTransactions expects an array of calls");
-    }
-
+  /**
+   * Exige que la wallet conectada sea la de la sesión.
+   *
+   * Si el usuario cambió de cuenta en la extensión, firmaría con una dirección
+   * que no es la del pedido y el `require_auth` del contrato lo rechazaría —
+   * mejor cortar acá con un mensaje claro.
+   */
+  private async assertSessionWallet(): Promise<string> {
     const user = authService.getCurrentUser();
-    if (!user?.walletProvider) throw new Error("No wallet provider found");
-  
-    let wallet: UnifiedWallet | null = null;
-    if (user.walletProvider === "cavos") {
-      wallet = await this.getCavosWallet(user.walletAddress!, cavos);
-    }
+    if (!user?.walletAddress) throw new Error("No wallet address found");
 
-    if (user.walletProvider === "starknet") {
-      wallet = await this.getStarknetWallet(connectWalletWithoutSignature, disconnectWallet);
+    let address = await this.trySilent();
+    if (!address) {
+      address = await this.connect();
     }
-    if (!wallet) throw new Error("No wallet available");
-  
-    return wallet.execute(calls);
+    if (address !== user.walletAddress) {
+      await this.disconnect();
+      throw new Error("Wallet mismatch, please connect the correct wallet");
+    }
+    return address;
   }
-  
 
-  // -------------------------------------------------
-  // CAVOS WALLET WRAPPER
-  // -------------------------------------------------
-  private async getCavosWallet(address: string, cavos?: any): Promise<UnifiedWallet> {
-    if (!cavos) throw new Error("Cavos instance missing");
+  /**
+   * Firma la transacción que armó el backend y devuelve el sobre firmado.
+   *
+   * El backend se encarga del envío: lo envuelve en un fee-bump y paga el fee,
+   * así el usuario nunca necesita XLM.
+   */
+  async signTransaction(prepared: PreparedTransaction): Promise<string> {
+    this.init();
+    const address = await this.assertSessionWallet();
 
-    return {
-      type: "cavos",
+    if (prepared.valid_until * 1000 < Date.now()) {
+      throw new Error("The transaction expired before being signed. Try again.");
+    }
+
+    const { signedTxXdr } = await StellarWalletsKit.signTransaction(prepared.xdr, {
+      networkPassphrase: prepared.network_passphrase,
       address,
-      execute: async (calls) => cavos.execute(calls, { gasless: true }),
-    };
+    });
+    return signedTxXdr;
   }
 
-  // -------------------------------------------------
-  // STARKNET WALLET WRAPPER
-  // -------------------------------------------------
-  private async getStarknetWallet(
-    connectWalletWithoutSignature: () => Promise<{ 
-      wallet: StarknetWindowObject | null, connectorData: ConnectorData | null 
-    }>, 
-    disconnectWallet: () => Promise<void>
-  ): Promise<UnifiedWallet> {
-    const { wallet, connectorData } = await this.ensureSameWalletConnected(
-      connectWalletWithoutSignature, disconnectWallet
-    );
+  /**
+   * Firma una transacción sin exigir que haya sesión.
+   *
+   * Lo necesita el alta de trustline patrocinada: pasa antes de que el usuario
+   * tenga nada más que una wallet conectada.
+   */
+  async signTransactionAs(prepared: PreparedTransaction, address: string): Promise<string> {
+    this.init();
+    const { signedTxXdr } = await StellarWalletsKit.signTransaction(prepared.xdr, {
+      networkPassphrase: prepared.network_passphrase,
+      address,
+    });
+    return signedTxXdr;
+  }
 
-    if (!wallet) throw new Error("No StarkNet wallet connected");
-
-    const activeAddress = connectorData?.account;
-    if (!activeAddress) {
-      throw new Error("Unable to determine connected StarkNet address");
-    }
-
-    return {
-      type: "starknet",
-      address: activeAddress,
-
-      execute: async (calls) => {
-        const arr = Array.isArray(calls) ? calls : [calls];
-
-        const result = await wallet.request({
-          type: "wallet_addInvokeTransaction",
-          params: {
-            calls: arr.map((c) => ({
-              contract_address: c.contractAddress,
-              entry_point: c.entrypoint,
-              calldata: c.calldata,
-            })),
-          },
-        });
-
-        return result.transaction_hash;
-      },
-    };
+  /** Firma un mensaje con formato SEP-53. Devuelve la firma en base64. */
+  async signMessage(message: string, address: string): Promise<string> {
+    this.init();
+    const { signedMessage } = await StellarWalletsKit.signMessage(message, {
+      networkPassphrase: networkFromEnv(),
+      address,
+    });
+    return signedMessage;
   }
 }
 

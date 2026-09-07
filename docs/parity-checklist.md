@@ -1,6 +1,6 @@
 # Checklist de paridad — migración Starknet → Stellar (Soroban)
 
-**Estado:** fases 0 – 2 completas · congelado el 2026-09-02 contra el commit `2334330`.
+**Estado:** fases 0 – 6 completas · congelado el 2026-09-02 contra el commit `2334330`.
 
 Este documento congela el comportamiento on-chain **actual** (Starknet) y define el
 criterio de aceptación de la migración. Cada flujo lista: entradas, llamadas al contrato,
@@ -443,3 +443,83 @@ Con soroban-sdk 27.0.6, contra los límites de mainnet protocolo 27:
 ítems, pero 16 es el mayor tamaño que pasa el presupuesto que enforcea el
 entorno de test. **Pendiente:** confirmarlo por simulación contra testnet con el
 WASM desplegado, que es la única medición que incluye el costo de la VM.
+
+---
+
+## Anexo B — estado de las fases
+
+| Fase | Estado | Verificación |
+|---|---|---|
+| 0 · Congelar el comportamiento | ✅ | Este documento + `scripts/verify-stellar-constants.mjs` |
+| 1 · Contratos Soroban | ✅ | 59 tests, clippy y fmt limpios, compra completa en testnet |
+| 2 · Deploy y scripts | ✅ | `deploy.sh` + `e2e-testnet.sh` reproducibles desde cero |
+| 3 · Capa de cadena del backend | ✅ | `npm run test:chain` pasa contra testnet |
+| 4 · Autenticación por wallet | ✅ | `POST /auth/nonce`, verificación SEP-53 local; falta probar con Freighter/xBull reales |
+| 5 · Quitar Stripe | ✅ | Cero referencias funcionales; migración de Prisma escrita, **sin aplicar** |
+| 6 · Frontend | ✅ | `next build` y `tsc` limpios; falta prueba manual con wallet real |
+| 7 · Endurecer y salir | ⏳ | Código completo; falta ejecutar los flujos contra testnet y mainnet |
+
+### Fase 7 — lo que ya está en código
+
+| Item | Estado | Dónde |
+|---|---|---|
+| Ventana de firma acotada a lo que le queda a la orden | ✅ | `signingWindowForOrder()` en `OrdersService`: `min(restante − 60 s, 5 min)`, y `ORDER_EXPIRING_TOO_SOON` si queda menos de 60 s. La transacción ya no puede sobrevivir a la orden |
+| Reconciliación de orden cancelada con pago confirmado | ✅ | 409 `ORDER_CANCELLED_WITH_CONFIRMED_PAYMENT` en `verifyOrderPayment` |
+| Traducción de ambos códigos de error | ✅ | `api_errors` en es/en/pt |
+| Extensión de TTL de storage | ✅ | `POST /api/onchain/product/:tokenId/touch` + `STATE_ARCHIVED` |
+| Restauración expuesta en el panel admin | ✅ | `onchainService.touchProduct()` y sección en `admin/contracts` |
+| Máximo de ítems medido y aplicado en el carrito | ✅ | `MAX_CART_ITEMS = 16` en `cartStore`, alineado con `MAX_ITEMS_PER_PURCHASE` del contrato; `addItem` devuelve `false` y la UI explica el motivo |
+| Copy de wallets corregido | ✅ | ArgentX/Braavos (Starknet) → Freighter, xBull, Albedo, Lobstr |
+
+### Fase 7 — lo que falta, y por qué no se puede cerrar desde el código
+
+| Item | Qué requiere |
+|---|---|
+| Aplicar la migración de Prisma | Acceso a la base: `npm run prisma:migrate:deploy` |
+| Login con Freighter y xBull reales | Navegador con la extensión instalada y una cuenta con fondos |
+| Los 11 flujos en testnet | Claves de testnet y la migración aplicada |
+| Los 11 flujos en mainnet | Cuenta de servicio con XLM para fee-bump y patrocinio |
+
+### Lo que verifica `backend/npm run test:chain`
+
+Ejercita la capa de cadena completa contra testnet, sin base de datos:
+
+```
+STELLAR_NETWORK=testnet \
+STELLAR_ADMIN_SECRET=$(stellar keys show cofi-admin) \
+PRODUCER_SECRET=$(stellar keys show cofi-producer) \
+BUYER_SECRET=$(stellar keys show cofi-buyer) \
+npm run test:chain
+```
+
+| Paso | Qué prueba |
+|---|---|
+| balances + trustline | Horizon para XLM, SAC para USDC, trustline detectada |
+| `createProductTx` → firma → submit | `TxBuilder`, fee-bump de `TxSubmitter`, evento verificado (precio con fee 10 → 15 USDC) |
+| `addProductStock` | Incremento de contador, sin mint |
+| `buyProductsTx` → firma → submit | Cobra exactamente 47 USDC (3 × 15 + 2 de envío) |
+| `verifyBuyProductEvents` | Topics legibles, sin selectores hexadecimales |
+| `verifyDeliveryPayment` | Vía el evento `buy_batch`, sin sumar `transfer` del SAC |
+| `claimSellerPayments` | El vendedor cobra y su saldo queda en 0 |
+| `getStadisticsInContracts` | Sin `cofiCollection` ni `swap` |
+
+### Cambios de forma en la API
+
+| Endpoint | Antes | Ahora |
+|---|---|---|
+| `POST /api/orders/checkout` | `{ txs: [{tx, tx_type}], checkoutUrl }` | `{ xdr, network_passphrase, valid_until }` |
+| `POST /api/orders/checkout/callback` | `{ id, tx_hash }` | `{ id, signed_xdr }` |
+| `POST /api/products/deploy` | `{ transaction, type }` | `{ xdr, network_passphrase, valid_until }` |
+| `POST /api/products/deploy/callback` | `{ product_id, tx_hash }` | `{ product_id, signed_xdr }` |
+| `PATCH /api/products/:id/stock` | `{ tx, txType }` | `{ tx: PreparedTransaction \| null }` |
+| `GET /api/products/:id/stock/sync` | sincroniza | ídem; el envío pasa a `POST /:id/stock/callback` |
+| `GET /api/sells/claim` | `{ tx, txType }` | `{ xdr, network_passphrase, valid_until }` |
+| `POST /api/sells/claim/callback` | `{ tx_hash }` | `{ signed_xdr }` |
+| `POST /api/onchain/withdraw` | `{ tx, tx_type }` | `{ xdr, network_passphrase, valid_until }` |
+| `GET /api/onchain/balance_of` | `{ STRK, USDC, USDT, USDC_BRIDGED }` | `{ balances: {XLM, USDC}, trustlines: {USDC} }` |
+| `GET /api/config/cavos` | config de Cavos | **borrado** → `GET /api/config/stellar` |
+| `POST /api/auth/register_wallet` | `signature: string[]`, `provider` | `signature: string` (SEP-53 base64), sin `provider` |
+| — | — | **nuevo** `POST /api/auth/nonce` |
+| — | — | **nuevo** `GET /api/onchain/usdc_trustline` + `/callback` |
+| — | — | **nuevo** `POST /api/onchain/product/:tokenId/touch` (TTL) |
+| `GET /api/onchain/swap_price`, `POST /swap`, `GET /mint_sepolia_usdc` | — | **borrados** |

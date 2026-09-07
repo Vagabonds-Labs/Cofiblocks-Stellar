@@ -28,15 +28,15 @@ function BridgeWidgetModal({ isOpen, onClose, recipientAddress }: BridgeWidgetMo
 			MATIC_POS: true,
 			OPTIMISM: true,
 			SCROLL: true,
-			STARKNET: true,
+			STELLAR: true,
 			ZKSYNC: true,
 		}),
 	);
 
 	// Build widget URL with updated parameters
 	const widgetUrl = apiKey
-		? `https://widget.rhino.fi/?apiKey=${apiKey}&include=${includeChains}&chainIn=ETHEREUM&chainOut=STARKNET&recipient=${encodeURIComponent(recipientAddress)}`
-		: `https://widget.rhino.fi/?include=${includeChains}&chainIn=ETHEREUM&chainOut=STARKNET&recipient=${encodeURIComponent(recipientAddress)}`;
+		? `https://widget.rhino.fi/?apiKey=${apiKey}&include=${includeChains}&chainIn=ETHEREUM&chainOut=STELLAR&recipient=${encodeURIComponent(recipientAddress)}`
+		: `https://widget.rhino.fi/?include=${includeChains}&chainIn=ETHEREUM&chainOut=STELLAR&recipient=${encodeURIComponent(recipientAddress)}`;
 
 	return (
 		<Modal

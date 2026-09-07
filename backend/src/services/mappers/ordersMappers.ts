@@ -101,7 +101,6 @@ export function mapOrderToResponse(order: OrderWithItemsEntry): OrderResponse {
       paymentTx: order.paymentTx,
       createdAt: order.createdAt,
       expiresAt: order.expiresAt,
-      isStripeOrder: order.stripePaymentId !== null,
       delivery: order.delivery ? mapDeliveryToResponse(order.delivery) : null,
       orderItems: order.orderItems.map(item => mapOrderItemToResponse(item)),
     };

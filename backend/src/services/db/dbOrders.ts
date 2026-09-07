@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { OrderStatus, DeliveryMethod } from '@prisma/client';
-import { getPriceWithoutMarketplaceFee } from '@/lib/CofiblocksContracts/utils/utilities';
+import { getPriceWithoutMarketplaceFee } from '@/lib/StellarContracts/utils';
 import { HttpException } from '@/exceptions/HttpException';
 import { logger } from '@/lib/logger';
 
@@ -12,7 +12,6 @@ export interface OrderEntry {
   deliveryId: string | null;
   createdAt: Date;
   expiresAt: Date;
-  stripePaymentId: string | null;
 }
 
 export interface OrderWithItemsEntry extends OrderEntry {
@@ -412,13 +411,6 @@ export class DbOrders {
     });
 
     return event;
-  }
-
-  async registerStripePayment(orderId: string, stripePaymentId: string): Promise<void> {
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { stripePaymentId: stripePaymentId },
-    });
   }
 
   async markOrderAsPaid(orderId: string, paymentTx: string, tx?: any): Promise<void> {

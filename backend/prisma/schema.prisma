@@ -30,6 +30,23 @@ model User {
   @@map("users")
 }
 
+/// Nonce de login por firma de wallet.
+///
+/// Antes lo generaba el cliente (`Date.now()-random`) y el backend nunca lo
+/// emitía ni lo invalidaba, así que una firma se podía reusar indefinidamente.
+/// Ahora lo emite `POST /auth/nonce`, vence rápido y se consume una sola vez.
+model AuthNonce {
+  id            String    @id @default(uuid())
+  nonce         String    @unique
+  walletAddress String?   @map("wallet_address")
+  expiresAt     DateTime  @map("expires_at")
+  consumedAt    DateTime? @map("consumed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("auth_nonces")
+}
+
 model RefreshToken {
   id        String   @id @default(uuid())
   token     String   @unique
@@ -113,9 +130,12 @@ model Product {
   sales           Int            @default(0)
   grindType       GrindType?     @map("grind_type")
   reservedStock   Int            @default(0) @map("reserved_stock")
+  /// Producto publicado en Starknet antes de la migración a Stellar. Arranque
+  /// en frío: no se migran, se filtran del catálogo y el productor los vuelve
+  /// a publicar. No se borran.
+  legacy          Boolean        @default(false)
   orderItems      OrderItem[]
   transactions    ProductTx[]
-  stripeProducts  StripeProduct[]
   farm            Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
   owner           User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
@@ -130,7 +150,6 @@ model Order {
   expiresAt     DateTime      @map("expires_at")
   paymentTx     String?       @map("payment_tx")
   deliveryId    String?       @map("delivery_id")
-  stripePaymentId String?     @map("stripe_payment_id")
   orderItems    OrderItem[]
   buyer         User          @relation(fields: [buyerId], references: [id], onDelete: Cascade)
   delivery      Delivery?     @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
@@ -150,18 +169,6 @@ model OrderItem {
   product              Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("order_items")
-}
-
-model StripeProduct {
-  id                String    @id @default(uuid())
-  stripeProductId   String    @map("stripe_product_id")
-  stripePriceId     String    @map("stripe_price_id")
-  productId         String    @map("product_id")
-  stripePriceActive Boolean   @default(true) @map("stripe_price_active")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@map("stripe_products")
 }
 
 model ProductTx {

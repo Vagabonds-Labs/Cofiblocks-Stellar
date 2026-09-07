@@ -1,63 +1,112 @@
-import { PaymentToken } from "@/lib/CofiblocksContracts/types/transactions";
-import { ContractFactory } from "@/lib/CofiblocksContracts";
-import { ERC20Service } from "@/lib/CofiblocksContracts/contracts/ERC20";
-import { starkToWei, usdToWei } from "@/lib/CofiblocksContracts/utils";
-import { ChainClient } from "@/lib/CofiblocksContracts/ChainClient";
-import { logger } from "@/lib/logger";
+import { ContractFactory } from '@/lib/StellarContracts';
+import { PaymentToken, PreparedTransaction } from '@/lib/StellarContracts/types/transactions';
+import { usdToStroops } from '@/lib/StellarContracts/utils';
+import { HttpException } from '@/exceptions/HttpException';
+import { logger } from '@/lib/logger';
 
 const contractFactory = new ContractFactory();
 
-function getERC20contract(token: PaymentToken | 'USDC_BRIDGED'): ERC20Service {
-    switch (token) {
-        case PaymentToken.USDC:
-            return contractFactory.getUSDCERC20Service();
-        case PaymentToken.USDT:
-            if (process.env.STARKNET_NETWORK === 'mainnet') {
-                return contractFactory.getUSDTERC20Service();
-            } else {
-                // USDT is not supported in sepolia
-                return contractFactory.getUSDCERC20Service();
-            }
-        case PaymentToken.STRK:
-            return contractFactory.getSTRKERC20Service();
-        case 'USDC_BRIDGED':
-            return contractFactory.getUSDCBridgedERC20Service();
-        default:
-            throw new Error(`Unsupported token: ${token}`);
+export interface WalletBalances {
+    XLM: string;
+    USDC: string;
+}
+
+/**
+ * Balance de un token.
+ *
+ * Sólo quedan XLM y USDC: se fueron STRK, USDT y USDC.e junto con el contrato
+ * de swap.
+ */
+export async function getBalanceOf(token: PaymentToken, walletAddress: string): Promise<string> {
+    if (token === PaymentToken.USDC) {
+        const usdc = contractFactory.getUSDCService();
+        return (await usdc.balance(walletAddress)).toString();
+    }
+    return getNativeBalance(walletAddress);
+}
+
+/** XLM es un activo clásico: vive en Horizon, no en el storage de un contrato. */
+async function getNativeBalance(walletAddress: string): Promise<string> {
+    try {
+        const account = await contractFactory.getClient().getHorizon().loadAccount(walletAddress);
+        const native = account.balances.find((balance) => balance.asset_type === 'native');
+        return native ? usdToStroops(Number(native.balance)).toString() : '0';
+    } catch (error) {
+        // Una cuenta que todavía no existe en la red no es un error de la app.
+        logger.info({ walletAddress }, 'Account not found on Horizon, reporting zero balance');
+        return '0';
     }
 }
 
-export async function getBalanceOf(token: PaymentToken | 'USDC_BRIDGED', walletAddress: string): Promise<string> {
-    const contract = getERC20contract(token);
-    const balance = await contract.getBalances(walletAddress).call();
-    return balance.toString();
+/**
+ * ¿Tiene el usuario trustline a USDC?
+ *
+ * Sin ella no puede recibir USDC y el pago al vendedor falla dejando el saldo
+ * atrapado en el contrato. Es la comprobación que reemplaza al "¿tiene gas?" de
+ * Starknet.
+ */
+export async function hasUSDCTrustline(walletAddress: string): Promise<boolean> {
+    const usdc = contractFactory.getUSDCService();
+    try {
+        const account = await contractFactory.getClient().getHorizon().loadAccount(walletAddress);
+        return account.balances.some(
+            (balance) =>
+                balance.asset_type !== 'native' &&
+                'asset_code' in balance &&
+                balance.asset_code === 'USDC' &&
+                balance.asset_issuer === usdc.issuer
+        );
+    } catch (error) {
+        return false;
+    }
+}
+
+export async function getWalletBalances(walletAddress: string): Promise<WalletBalances> {
+    const [xlm, usdc] = await Promise.all([
+        getBalanceOf(PaymentToken.XLM, walletAddress),
+        getBalanceOf(PaymentToken.USDC, walletAddress),
+    ]);
+    return { XLM: xlm, USDC: usdc };
 }
 
 export async function canUserPayUSDC(walletAddress: string, amountUSD: number): Promise<boolean> {
     const balance = await getBalanceOf(PaymentToken.USDC, walletAddress);
     logger.info(`Balance of ${walletAddress} is ${balance}`);
-    return BigInt(balance) >= usdToWei(amountUSD);
+    return BigInt(balance) >= usdToStroops(amountUSD);
 }
 
 export async function getClaimBalance(walletAddress: string): Promise<string> {
-    const contract = contractFactory.getMarketplaceService();
-    const balance = await contract.getSellerBalance(walletAddress).call();
+    const marketplace = contractFactory.getMarketplaceService();
+    const balance = await marketplace.getSellerBalance(walletAddress);
     return balance.toString();
 }
 
+/**
+ * Transferencia a una dirección externa.
+ *
+ * Ahora necesita la dirección de origen: en Stellar el usuario tiene que ser la
+ * source account de su propia transacción.
+ */
 export async function withdraw(
-    token: PaymentToken | 'USDC_BRIDGED', 
-    amount: number, 
+    token: PaymentToken,
+    amount: number,
+    fromAddress: string,
     withdrawAddress: string
-): Promise<ChainClient> {
-    const contract = getERC20contract(token);
-    const formattedAmount = token === PaymentToken.STRK ? starkToWei(amount) : usdToWei(amount);
-    const tx = await contract.transfer(formattedAmount, withdrawAddress);
-    return tx;
+): Promise<PreparedTransaction> {
+    if (token !== PaymentToken.USDC) {
+        throw new HttpException(400, 'Only USDC withdrawals are supported', 'UNSUPPORTED_TOKEN');
+    }
+    const usdc = contractFactory.getUSDCService();
+    return usdc.transfer(fromAddress, withdrawAddress, usdToStroops(amount));
 }
 
-export async function claimSellerPayments(): Promise<ChainClient> {
-    const contract = contractFactory.getMarketplaceService();
-    const tx = await contract.withdrawSellerBalance();
-    return tx;
+/**
+ * Cobro del vendedor.
+ *
+ * Ahora necesita la dirección: `withdraw_seller_balance` exige el `require_auth`
+ * del vendedor, y el vendedor tiene que ser la source account.
+ */
+export async function claimSellerPayments(sellerWalletAddress: string): Promise<PreparedTransaction> {
+    const marketplace = contractFactory.getMarketplaceService();
+    return marketplace.withdrawSellerBalance(sellerWalletAddress);
 }

@@ -1,5 +1,5 @@
-import { ROLES } from "@/lib/CofiblocksContracts/types/events";
-import { PaymentToken, SwapToken } from "@/lib/CofiblocksContracts/types/transactions";
+import { ROLES } from "@/lib/StellarContracts/types/contracts";
+import { PaymentToken } from "@/lib/StellarContracts/types/transactions";
 import { ProductTxType } from "@prisma/client";
 import { z } from "zod";
 
@@ -32,11 +32,17 @@ export const revokeRoleSchema = z.object({
   }),
 });
 
-const starknetAddressRegex = /^0x[a-fA-F0-9]{64}$/;
+/**
+ * Cuenta clásica de Stellar: StrKey `G` + 55 caracteres base32.
+ *
+ * Las cuentas contrato (`C…`, smart wallets y passkeys) se rechazan a propósito:
+ * v1 sólo soporta cuentas clásicas ed25519.
+ */
+const stellarAddressRegex = /^G[A-Z2-7]{55}$/;
 
 export const withdrawSchema = z.object({
   body: z.object({
-    token: z.union([z.nativeEnum(PaymentToken), z.literal('USDC_BRIDGED')]),
+    token: z.nativeEnum(PaymentToken),
 
     // Receive as string, validate decimal format, then parse
     amount: z
@@ -48,15 +54,15 @@ export const withdrawSchema = z.object({
     withdrawAddress: z
       .string()
       .regex(
-        starknetAddressRegex,
-        'Invalid Starknet address (expected 0x + 64 hex chars)'
+        stellarAddressRegex,
+        'Invalid Stellar address (expected a classic G… account)'
       ),
   }),
 });
 
-export const swapSchema = z.object({
+/** El frontend devuelve el sobre firmado, no un hash. */
+export const submitSignedSchema = z.object({
   body: z.object({
-    token: z.nativeEnum(SwapToken),
-    amount: z.number().positive('Amount must be greater than 0')
+    signed_xdr: z.string().min(1, 'Signed transaction XDR is required'),
   }),
 });

@@ -28,6 +28,30 @@ export default function ManageContractsPage() {
   const [error, setError] = useState<string | null>(null)
   const [distributing, setDistributing] = useState(false)
 
+  // Restauración de productos archivados por el state archival de Soroban.
+  const [touchTokenId, setTouchTokenId] = useState('')
+  const [touching, setTouching] = useState(false)
+  const [touchResult, setTouchResult] = useState<string | null>(null)
+  const [touchError, setTouchError] = useState<string | null>(null)
+
+  const handleTouchProduct = async () => {
+    const tokenId = touchTokenId.trim()
+    if (!tokenId) return
+
+    setTouching(true)
+    setTouchResult(null)
+    setTouchError(null)
+    try {
+      const { tx_hash } = await onchainService.touchProduct(tokenId)
+      setTouchResult(tx_hash)
+      setTouchTokenId('')
+    } catch (err) {
+      setTouchError(err instanceof Error ? err.message : t('admin_contracts.touch_error'))
+    } finally {
+      setTouching(false)
+    }
+  }
+
   // Check if user is admin and redirect if not
   useEffect(() => {
     if (!userLoading) {
@@ -158,43 +182,13 @@ export default function ManageContractsPage() {
                 </a>
               </div>
             </div>
-            <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+            <div className="flex items-center justify-between py-2">
               <span className="text-sm font-medium text-gray-700">{t('admin_contracts.marketplace')}</span>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-mono text-gray-600 block md:hidden">{shortenAddress(contractsInfo.marketplace.contractAddress)}</span>
                 <span className="text-sm font-mono text-gray-600 hidden md:block">{contractsInfo.marketplace.contractAddress}</span>
                 <a
                   href={contractsInfo.marketplace.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 transition"
-                >
-                  <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                </a>
-              </div>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm font-medium text-gray-700">{t('admin_contracts.cofi_collection')}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-mono text-gray-600 block md:hidden">{shortenAddress(contractsInfo.cofiCollection.contractAddress)}</span>
-                <span className="text-sm font-mono text-gray-600 hidden md:block">{contractsInfo.cofiCollection.contractAddress}</span>
-                <a
-                  href={contractsInfo.cofiCollection.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 transition"
-                >
-                  <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                </a>
-              </div>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm font-medium text-gray-700">{t('admin_contracts.swap')}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-mono text-gray-600 block md:hidden">{shortenAddress(contractsInfo.swap.contractAddress)}</span>
-                <span className="text-sm font-mono text-gray-600 hidden md:block">{contractsInfo.swap.contractAddress}</span>
-                <a
-                  href={contractsInfo.swap.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:text-blue-800 transition"
@@ -217,17 +211,6 @@ export default function ManageContractsPage() {
           </div>
         </div>
 
-        {/* Swap Balance */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('admin_contracts.swap_balance')}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-1 gap-6">
-            <BalanceCard
-              label={t('balances.currency_usdc')}
-              amount={formatBalance(contractsInfo.swap.usdcBalance, PaymentToken.USDC)}
-            />
-          </div>
-        </div>
-
         {/* Distribution Statistics */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('admin_contracts.distribution_statistics')}</h2>
@@ -245,6 +228,47 @@ export default function ManageContractsPage() {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Restaurar producto archivado (state archival de Soroban) */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">{t('admin_contracts.restore_title')}</h2>
+          <p className="text-sm text-gray-600 mb-4">{t('admin_contracts.restore_help')}</p>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={touchTokenId}
+              onChange={(e) => setTouchTokenId(e.target.value)}
+              placeholder={t('admin_contracts.restore_placeholder')}
+              disabled={touching}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-orange-500 focus:border-orange-500 disabled:bg-gray-100"
+            />
+            <button
+              onClick={handleTouchProduct}
+              disabled={touching || !touchTokenId.trim()}
+              className="px-6 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {touching ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  {t('admin_contracts.restoring')}
+                </>
+              ) : (
+                t('admin_contracts.button_restore')
+              )}
+            </button>
+          </div>
+
+          {touchResult && (
+            <p className="mt-3 text-sm text-green-700 break-all">
+              {t('admin_contracts.restore_success')} <span className="font-mono">{touchResult}</span>
+            </p>
+          )}
+          {touchError && (
+            <p className="mt-3 text-sm text-red-700">{touchError}</p>
+          )}
         </div>
 
         {/* Distribute Button */}

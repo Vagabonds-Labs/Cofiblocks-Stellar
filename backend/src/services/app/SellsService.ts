@@ -5,7 +5,8 @@ import { OrderResponse } from './types/Orders';
 import { OrderStatus } from '@prisma/client';
 import { mapOrderToResponse } from '../mappers/ordersMappers';
 import * as OnChainBalancesService from '@/services/onchain/OnChainBalancesService';
-import { TransactionDetails, TransactionType } from '@/lib/CofiblocksContracts/types/transactions';
+import { ContractFactory } from '@/lib/StellarContracts';
+import { PreparedTransaction } from '@/lib/StellarContracts/types/transactions';
 import * as NotificationService from '@/services/app/NotificationService';
 
 const dbOrders = new DbOrders();
@@ -69,20 +70,32 @@ export async function confirmDelivery(userId: string, orderId: string): Promise<
     }
   }
 
-  export async function getClaimTx(): Promise<{ tx: TransactionDetails, txType: TransactionType }> {
-    const tx = await OnChainBalancesService.claimSellerPayments();
-    return { tx: tx.getTransactionDetails(), txType: tx.getTransactionType() };
+  /**
+   * El vendedor tiene que ser la source account de su propia transacción, así
+   * que ahora hace falta su dirección para armarla.
+   */
+  export async function getClaimTx(walletAddress: string): Promise<PreparedTransaction> {
+    return OnChainBalancesService.claimSellerPayments(walletAddress);
   }
 
-  export async function claimCallback(userId: string, walletAddress: string, txHash: string): Promise<void> {
-    // for now, just recheck the balance on chain, and if 0, clean all order items balance
+  /**
+   * Cierra el cobro del vendedor.
+   *
+   * Recibe el XDR firmado: el backend lo envía con fee-bump y saca el hash del
+   * submit, así el vendedor tampoco necesita XLM para cobrar.
+   */
+  export async function claimCallback(
+    userId: string, walletAddress: string, signedXdr: string
+  ): Promise<void> {
+    const { hash } = await new ContractFactory().getTxSubmitter().submitSigned(signedXdr);
+
+    // Se revalida contra la cadena: si el saldo no quedó en 0, algo no cerró.
     const balance = await OnChainBalancesService.getClaimBalance(walletAddress);
     if (balance !== '0') {
       throw new HttpException(500, 'Claim balance is not 0', 'CLAIM_BALANCE_NOT_0');
     }
 
-    // clean all order items balance
-    await dbOrders.cleanProducerClaimBalance(userId, txHash);
+    await dbOrders.cleanProducerClaimBalance(userId, hash);
   }
 
   export async function getOrderSellers(orderId: string): Promise<string[]> {

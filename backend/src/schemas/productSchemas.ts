@@ -47,9 +47,8 @@ export const deployCallbackSchema = z.object({
     product_id: z
       .string()
       .uuid('Product ID must be a valid UUID'),
-    tx_hash: z
-      .string()
-      .min(1, 'Transaction hash is required'),
+    // El frontend devuelve el sobre firmado; el backend lo envía y saca el hash.
+    signed_xdr: z.string().min(1, 'Signed transaction XDR is required'),
   }),
 });
 
@@ -88,6 +87,10 @@ export const updateProductStockSchema = z.object({
 export const updateProductStockCallbackSchema = z.object({
   params: z.object({
     id: z.string().uuid(),
+  }),
+  body: z.object({
+    // El frontend devuelve el sobre firmado; el backend lo envía y saca el hash.
+    signed_xdr: z.string().min(1, 'Signed transaction XDR is required'),
   }),
 });
 

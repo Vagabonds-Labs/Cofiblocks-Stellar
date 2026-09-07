@@ -112,7 +112,22 @@ export class AuthService {
     return res.data.user;
   }
 
-  async registerWallet(address: string, signature: string[], nonce: string, provider: "wallet" | "cavos" = "wallet") {
+  /**
+   * Pide al backend el nonce a firmar.
+   *
+   * Antes lo generaba el cliente y el backend nunca lo invalidaba, así que una
+   * misma firma servía para siempre. Ahora sale del backend, vence en 5 minutos
+   * y se consume una sola vez.
+   */
+  async requestNonce(address?: string) {
+    const res = await api.post<{
+      data: { nonce: string; message: string; expires_at: number };
+    }>("/auth/nonce", address ? { address } : {});
+    return res.data;
+  }
+
+  /** `signature` es la firma SEP-53 en base64, no el par (r, s) de Starknet. */
+  async registerWallet(address: string, signature: string, nonce: string) {
     const res = await api.post<{
       data: {
         user: User;
@@ -122,7 +137,6 @@ export class AuthService {
       address,
       signature,
       nonce,
-      provider,
     });
 
     // Access token is set as HttpOnly cookie by backend

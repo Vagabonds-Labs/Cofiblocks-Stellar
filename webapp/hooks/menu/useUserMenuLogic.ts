@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { useOutsideClick } from '../ui/useOutsideClick'
 import { formatDisplayName } from '../../utils/formatting'
 import { authService } from '@/services/auth/authService'
-import { useOptionalCavos } from '../auth/useOptionalCavos'
+import { walletService } from '@/services/wallet/walletService'
 
 interface UserMenuLogicProps {
     isLoggedIn: boolean
@@ -13,8 +13,6 @@ interface UserMenuLogicProps {
 
 export function useUserMenuLogic({ isLoggedIn, userName, walletAddress }: UserMenuLogicProps) {
     const router = useRouter()
-    const { cavos: { logout: cavosLogout, isAuthenticated } } = useOptionalCavos()
-  
     const menuRef = useRef<HTMLDivElement>(null)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
   
@@ -34,11 +32,11 @@ export function useUserMenuLogic({ isLoggedIn, userName, walletAddress }: UserMe
   
     const logout = async () => {
       try {
-        if (isAuthenticated) await cavosLogout?.()
+        await walletService.disconnect()
       } catch (err) {
-        console.error("Cavos logout error:", err)
+        console.error("Wallet disconnect error:", err)
       }
-  
+
       await authService.logout()
       window.location.reload()
     }

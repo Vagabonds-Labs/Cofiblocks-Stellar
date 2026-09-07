@@ -243,7 +243,6 @@ export default function AdminOrdersPage() {
                   onDelete={refetchOrders}
                   order={order} 
                   onClick={(orderId) => router.push(`/${locale}/admin/orders/${orderId}`)}
-                  showStripeLabel={true}
                 />
               ))}
             </div>

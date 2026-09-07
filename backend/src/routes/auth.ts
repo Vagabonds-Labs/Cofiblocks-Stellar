@@ -7,16 +7,31 @@ import {
   getSessionsSchema,
   revokeSessionSchema,
   registerWalletSchema,
+  nonceSchema,
   type RegisterWalletRequest,
 } from '@/schemas/userSchemas';
 import { HttpException } from '@/exceptions/HttpException';
 import { getClientIp, setRefreshTokenCookie, clearRefreshTokenCookie, getRefreshToken, setAccessTokenCookie, clearAccessTokenCookie } from '@/utils/authUtils';
 import * as AuthService from '@/services/app/AuthService';
+import * as NonceService from '@/services/app/NonceService';
 import * as UsersService from '@/services/app/UsersService';
 import * as NotificationsService from '@/services/app/NotificationService';
 import { successResponse } from '@/utils/formatting';
 
 const router = Router();
+
+/**
+ * POST /api/auth/nonce
+ *
+ * Emite el nonce que hay que firmar para entrar. Vence en 5 minutos y se
+ * consume una sola vez: el backend rechaza cualquier firma cuyo nonce no haya
+ * salido de acá. Antes lo generaba el cliente y nunca se invalidaba.
+ */
+router.post('/nonce', validate(nonceSchema), async (req: Request, res: Response, next) => {
+  const { address } = req.body;
+  const issued = await NonceService.issueNonce(address);
+  successResponse(res, issued, 'Nonce issued successfully', 201);
+});
 
 
 router.post('/refresh', validate(refreshTokenSchema), async (req: Request, res: Response, next) => {
@@ -93,7 +108,7 @@ router.delete(
   });
   
   router.post('/register_wallet', validate(registerWalletSchema), async (req: Request, res: Response, next) => {
-    const { address, signature, nonce, provider }: RegisterWalletRequest = req.body;
+    const { address, signature, nonce }: RegisterWalletRequest = req.body;
   
     // Get session data from request
     const sessionData = {
@@ -105,7 +120,7 @@ router.delete(
     const { user, isNewUser } = await UsersService.registerUser(
       {
         walletAddress: address,
-        walletProvider: provider === 'cavos' ? 'cavos' : 'starknet',
+        walletProvider: 'stellar',
         signature: signature,
         nonce,
       }

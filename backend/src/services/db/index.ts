@@ -6,4 +6,4 @@ export * from './dbProducts';
 export * from './dbNotifications';
 export * from './dbUsers';
 export * from './dbOrders';
-export * from './dbProductTx';
+export * from './dbProductTx';export * from './dbAuthNonce';

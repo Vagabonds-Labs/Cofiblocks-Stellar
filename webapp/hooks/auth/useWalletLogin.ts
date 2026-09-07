@@ -1,157 +1,68 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { connect, disconnect, getSelectedConnectorWallet } from 'starknetkit'
-import { constants } from 'starknet'
-import { ArgentMobileConnector, isInArgentMobileAppBrowser } from 'starknetkit/argentMobile'
-import { BraavosMobileConnector } from 'starknetkit/braavosMobile'
-import type { StarknetWindowObject } from 'starknetkit'
-import { authService } from '@/services/auth'
-import { buildSignatureTypedData } from '../../utils/signature'
-import { InjectedConnector } from 'starknetkit/injected'
-import { isMobile } from '../../utils/platform'
 
+import { authService } from '@/services/auth'
+import { walletService } from '@/services/wallet/walletService'
+
+/**
+ * Login por firma de wallet.
+ *
+ * El flujo cambió respecto de Starknet: ya no se firma un typed data SNIP-12 ni
+ * se verifica contra el contrato de cuenta del usuario. Acá el backend emite un
+ * nonce de un solo uso, la wallet firma el mensaje en formato SEP-53 y el
+ * backend lo verifica en local con la clave pública ed25519.
+ */
 export function useWalletLogin() {
-  const [wallet, setWallet] = useState<StarknetWindowObject | null>(null)
   const [address, setAddress] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [isRegistered, setIsRegistered] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Detect previously selected wallet
+  // Reconexión silenciosa si el usuario ya había elegido una wallet.
   useEffect(() => {
-    const selected = getSelectedConnectorWallet()
-    if (!selected){
-      return
-    }
+    let cancelled = false
 
-    setWallet(selected)
-
-    selected
-      .request({ type: 'wallet_requestAccounts' })
-      .then((accs: string[]) => {
-        const addr = accs?.[0]
-        if (!addr) {
-          console.error("No address found")
-          return
-        }
-        setAddress(addr)
-
-        if (authService.isAuthenticated()) {
-          setIsRegistered(true)
-        } else {
-          console.error("User not authenticated")
-        }
+    walletService
+      .trySilent()
+      .then((connected) => {
+        if (cancelled || !connected) return
+        setAddress(connected)
+        setIsRegistered(authService.isAuthenticated())
       })
       .catch((err) => console.error(err))
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const connectWalletWithoutSignature = async () => {
-      const argentMobileOptions = {
-        dappName: 'CofiBlocks',
-        chainId: process.env.NEXT_PUBLIC_CAVOS_NETWORK === 'mainnet' ? constants.NetworkName.SN_MAIN : constants.NetworkName.SN_SEPOLIA,
-        description: 'CofiBlocks',
-        url: process.env.NEXT_PUBLIC_APP_URL + '/login',
-      }
-
-      const braavosMobileOptions = { name: 'Braavos'}
-      const argentMobileConnector = ArgentMobileConnector.init(
-        { options: argentMobileOptions, inAppBrowserOptions: {} }
-      );
-      const braavosMobileConnector = BraavosMobileConnector.init({ inAppBrowserOptions: braavosMobileOptions });
-
-      let connectors = [];
-      
-      if (isInArgentMobileAppBrowser()) {
-        // Argent app browser: one obvious choice
-        connectors = [argentMobileConnector]
-      } else if (isMobile()) {
-        // Mobile browsers (Safari / Chrome)
-        connectors = [braavosMobileConnector]
-      } else {
-        // Desktop
-        connectors = [
-          new InjectedConnector({ options: { id: 'braavos', name: 'Braavos'} }),
-          new InjectedConnector({ options: { id: 'argentX', name: 'Ready Wallet' } }),
-          // leave this options here in case the user has no wallet installed in browser
-          argentMobileConnector,
-        ]
-      }
-
-      const result = await connect({
-        connectors: connectors,
-        dappName: 'CofiBlocks',
-        modalTheme: 'light',
-        modalMode: 'alwaysAsk'
-      })
-
-      const walletAddress = result?.connectorData?.account
-      if (!result.wallet || !walletAddress) {
-        throw new Error('Connection cancelled')
-      }
-
-      return { wallet: result.wallet, connectorData: result.connectorData }
-  }
+  /** Abre el modal y devuelve la dirección, sin pedir firma. */
+  const connectWalletWithoutSignature = useCallback(async () => {
+    const connected = await walletService.connect()
+    setAddress(connected)
+    return connected
+  }, [])
 
   const connectWallet = useCallback(async () => {
     setIsConnecting(true)
     setError(null)
 
     try {
-      const result = await connectWalletWithoutSignature()
-      if (!result.wallet) {
-        throw new Error('No wallet connected')
-      }
+      const connected = await walletService.connect()
 
-      const walletAddress = result.connectorData?.account ?? ''
+      // El nonce lo emite el backend: una firma vieja no sirve dos veces.
+      const { nonce, message } = await authService.requestNonce(connected)
+      const signature = await walletService.signMessage(message, connected)
 
-      // Typed data
-      const typedData = buildSignatureTypedData()
+      await authService.registerWallet(connected, signature, nonce)
 
-      // Sign
-      const rawSig: any = await result.wallet.request({
-        type: 'wallet_signTypedData',
-        params: typedData,
-      })
-
-      const rawSignature = Array.isArray(rawSig)
-        ? rawSig
-        : rawSig.signature ?? []
-
-      if (!rawSignature.length) {
-        throw new Error('Invalid signature')
-      }
-
-      // Convert signature to hex strings with 0x prefix (required by backend)
-      // Starknet signatures are felt252 values that need to be converted to hex
-      const signature = rawSignature.map((sig: any) => {
-        // If already a hex string with 0x prefix, normalize and return
-        if (typeof sig === 'string' && sig.startsWith('0x')) {
-          return sig.toLowerCase()
-        }
-        
-        // Convert to BigInt (handles numbers, BigInt, decimal strings, and hex strings)
-        try {
-          const num = typeof sig === 'bigint' ? sig : BigInt(sig)
-          // Convert BigInt to hex string with 0x prefix
-          return '0x' + num.toString(16).toLowerCase()
-        } catch (error) {
-          // If conversion fails, return as string with 0x prefix
-          const str = String(sig)
-          return str.startsWith('0x') ? str.toLowerCase() : '0x' + str.toLowerCase()
-        }
-      })
-
-      // Register with backend
-      await authService.registerWallet(walletAddress, signature, typedData.message.nonce, 'wallet')
-      setWallet(result.wallet)
-      setAddress(walletAddress)
+      setAddress(connected)
       setIsRegistered(true)
     } catch (err: any) {
-      console.error("Wallet login failed", err)
+      console.error('Wallet login failed', err)
       setError(err.message || 'Wallet login failed')
-      await disconnect()
-      setWallet(null)
+      await walletService.disconnect()
       setAddress(null)
       setIsRegistered(false)
     } finally {
@@ -160,14 +71,12 @@ export function useWalletLogin() {
   }, [])
 
   const disconnectWallet = useCallback(async () => {
-    await disconnect()
-    setWallet(null)
+    await walletService.disconnect()
     setAddress(null)
     setIsRegistered(false)
   }, [])
 
   return {
-    wallet,
     address,
     isRegistered,
     isConnecting,

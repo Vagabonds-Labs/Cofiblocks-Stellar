@@ -6,7 +6,7 @@
 import { api } from '@/lib/api';
 import { GetSellsResponse } from './types';
 import { OrderWithBuyer } from '../orders/types';
-import { TransactionDetails } from '../onchain/types';
+import { PreparedTransaction } from '@/types/contracts';
 
 export class SellsService {
   /**
@@ -33,21 +33,22 @@ export class SellsService {
   }
 
   /**
-   * Get claim balance from the contract
-   * @returns Claim balance as a string (wei amount)
+   * Saldo reclamable en el contrato.
+   * @returns el monto en la unidad mínima de USDC (7 decimales).
    */
   async getClaimBalance(): Promise<string> {
     const response = await api.get<{data: string}>('/sells/claim_balance');
     return response.data;
   }
 
-  async getClaimTx(): Promise<{ tx: TransactionDetails }> {
-    const response = await api.get<{data: { tx: TransactionDetails }}>('/sells/claim');
+  /** Transacción de cobro ya simulada, lista para que la firme la wallet. */
+  async getClaimTx(): Promise<PreparedTransaction> {
+    const response = await api.get<{data: PreparedTransaction}>('/sells/claim');
     return response.data;
   }
 
-  async claimCallback(txHash: string): Promise<void> {
-    await api.post<{data: void}>('/sells/claim/callback', { tx_hash: txHash });
+  async claimCallback(signedXdr: string): Promise<void> {
+    await api.post<{data: void}>('/sells/claim/callback', { signed_xdr: signedXdr });
   }
 }
 

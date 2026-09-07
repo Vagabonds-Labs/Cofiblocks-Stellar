@@ -37,15 +37,16 @@ router.get('/claim_balance', authenticate, async (req: Request, res: Response, n
 });
 
 router.get('/claim', authenticate, async (req: Request, res: Response, next) => {
-  const tx = await SellsService.getClaimTx();
+  const { walletAddress } = req.user!;
+  const tx = await SellsService.getClaimTx(walletAddress);
   successResponse(res, tx, 'Claim transaction fetched successfully', 200);
 });
 
 router.post('/claim/callback', authenticate, validate(claimCallbackSchema), async (req: Request, res: Response, next) => {
-  const { tx_hash } = req.body;
+  const { signed_xdr } = req.body;
   const { walletAddress, userId } = req.user!;
-  logger.info('Received claim callback request for tx hash ' + tx_hash + ' for user ' + userId);
-  await SellsService.claimCallback(userId, walletAddress, tx_hash);
+  logger.info('Received claim callback request for user ' + userId);
+  await SellsService.claimCallback(userId, walletAddress, signed_xdr);
   successResponse(res, null, 'Claim transaction fetched successfully', 200);
 });
 

@@ -140,27 +140,28 @@ export const requestVerificationEmailSchema = z.object({
  */
 export const registerWalletSchema = z.object({
   body: z.object({
+    // Cuenta clásica de Stellar. Las cuentas contrato (`C…`) no se soportan en v1.
     address: z
       .string()
-      .min(1, 'Wallet address is required')
-      .regex(/^0x[a-fA-F0-9]+$/, 'Invalid wallet address format'),
+      .regex(/^G[A-Z2-7]{55}$/, 'Invalid Stellar address (expected a classic G… account)'),
+    // Firma SEP-53 en base64, no el par (r, s) de Starknet.
     signature: z
-      .array(z.string().regex(/^0x[a-fA-F0-9]+$/))
-      .min(2, 'Signature must contain r and s values'),
+      .string()
+      .min(1, 'Signature is required'),
+    // Tiene que venir de POST /api/auth/nonce.
     nonce: z
       .string()
       .min(1, 'Nonce is required'),
-    provider: z.enum(['wallet', 'cavos']).default('wallet'),
-  }).refine(
-    (data) => {
-      // Signature is required for both wallet and Cavos providers
-      return data.signature && data.signature.length >= 2;
-    },
-    {
-      message: 'Signature is required and must contain r and s values',
-      path: ['signature'],
-    }
-  ),
+  }),
+});
+
+export const nonceSchema = z.object({
+  body: z.object({
+    address: z
+      .string()
+      .regex(/^G[A-Z2-7]{55}$/, 'Invalid Stellar address (expected a classic G… account)')
+      .optional(),
+  }),
 });
 
 /**

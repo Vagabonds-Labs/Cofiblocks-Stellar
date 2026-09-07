@@ -80,7 +80,6 @@ export const getHomeDeliveryPriceSchema = z.object({
 export const checkoutOrderSchema = z.object({
   body: z.object({
     id: z.string().uuid('Order ID must be a valid UUID'),
-    stripe_checkout: z.boolean().optional().default(false),
     delivery_event_id: z.string().uuid('Delivery event ID must be a valid UUID').optional(),
     delivery_home: z
       .object({
@@ -123,7 +122,8 @@ export const checkoutOrderSchema = z.object({
 export const checkoutOrderCallbackSchema = z.object({
   body: z.object({
     id: z.string().uuid('Order ID must be a valid UUID'),
-    tx_hash: z.string().min(1, 'Transaction hash is required'),
+    // El frontend devuelve el sobre firmado; el backend lo envía y saca el hash.
+    signed_xdr: z.string().min(1, 'Signed transaction XDR is required'),
   }),
 });
 

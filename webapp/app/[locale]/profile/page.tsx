@@ -7,20 +7,17 @@ import { useRouter } from 'next/navigation'
 
 import { useUser } from '@/lib/providers/UserProvider'
 import { useProfileForm, useBalances, useFundingActions } from '@/hooks'
-import { ProfileForm, BalancesSection, FundingSection } from '@/components/profile'
-import { onchainService } from '@/services/api/onchain'
-import { useOptionalCavos } from '@/hooks/auth/useOptionalCavos'
+import { ProfileForm, BalancesSection, FundingSection, TrustlineNotice } from '@/components/profile'
 
 export default function ProfilePage() {
   const t = useTranslations()
   const router = useRouter()
   const { user, loading, error: userError, refreshUser } = useUser()
-  const { cavos: { getOnramp } } = useOptionalCavos()
 
   // HOOKS
   const form = useProfileForm(user, t, refreshUser)
   const balances = useBalances(user, loading, t)
-  const funding = useFundingActions(user, getOnramp, t)
+  const funding = useFundingActions(user, t)
 
   const error = userError || form.error || balances.balancesError || funding.error
 
@@ -61,16 +58,12 @@ export default function ProfilePage() {
         {/* FORM */}
         <ProfileForm form={form} user={user} t={t} />
 
-        {process.env.NEXT_PUBLIC_CAVOS_NETWORK === 'sepolia' && (
-          <div className="flex justify-center my-6">
-            <button
-              onClick={async () => await onchainService.mintSepoliaUSDC()}
-              className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-lg shadow-md hover:from-orange-600 hover:to-orange-700 hover:shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
-            >
-              Get $100 Sepolia Tokens
-            </button>
-          </div>
-        )}
+        {/* Sin trustline la cuenta no puede recibir USDC. El backend la patrocina. */}
+        <TrustlineNotice
+          walletAddress={user?.walletAddress ?? null}
+          onCreated={balances.fetchBalances}
+          t={t}
+        />
 
         {/* BALANCES */}
         <BalancesSection balances={balances} user={user} t={t} />

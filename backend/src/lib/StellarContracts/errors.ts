@@ -36,7 +36,31 @@ const DISTRIBUTION_ERRORS: Record<number, { status: number; code: string; messag
   6: { status: 400, code: 'INVALID_AMOUNT', message: 'Invalid amount' },
 };
 
-export type ContractKind = 'marketplace' | 'distribution';
+/**
+ * Códigos del SAC (Stellar Asset Contract) de USDC.
+ *
+ * Son del host de Soroban (`builtin_contracts/contract_error.rs`), no nuestros,
+ * y se pisan con los del marketplace: el #13 del SAC es "falta trustline",
+ * el #13 del marketplace es "compra inválida". Por eso cada llamada declara de
+ * qué contrato viene.
+ */
+const TOKEN_ERRORS: Record<number, { status: number; code: string; message: string }> = {
+  6: { status: 400, code: 'ACCOUNT_MISSING', message: 'The Stellar account does not exist on this network yet' },
+  8: { status: 400, code: 'INVALID_AMOUNT', message: 'Amount cannot be negative' },
+  10: { status: 400, code: 'INSUFFICIENT_USDC_BALANCE', message: 'Insufficient USDC balance' },
+  11: { status: 403, code: 'USDC_DEAUTHORIZED', message: 'The USDC issuer has frozen this account' },
+  13: { status: 400, code: 'USDC_TRUSTLINE_MISSING', message: 'The account has no USDC trustline' },
+  14: { status: 400, code: 'INSUFFICIENT_ACCOUNT_RESERVE', message: 'The account does not have enough XLM reserve' },
+  15: { status: 400, code: 'TOO_MANY_SUBENTRIES', message: 'The account has too many subentries' },
+};
+
+export type ContractKind = 'marketplace' | 'distribution' | 'token';
+
+const TABLES: Record<ContractKind, Record<number, { status: number; code: string; message: string }>> = {
+  marketplace: MARKETPLACE_ERRORS,
+  distribution: DISTRIBUTION_ERRORS,
+  token: TOKEN_ERRORS,
+};
 
 /** Extrae el `#N` de un `Error(Contract, #N)`. */
 export function parseContractErrorCode(raw: string): number | null {
@@ -64,13 +88,12 @@ export function toDomainError(raw: string, kind: ContractKind = 'marketplace'): 
 
   const code = parseContractErrorCode(raw);
   if (code !== null) {
-    const table = kind === 'distribution' ? DISTRIBUTION_ERRORS : MARKETPLACE_ERRORS;
-    const known = table[code];
+    const known = TABLES[kind][code];
     if (known) {
       return new HttpException(known.status, known.message, known.code);
     }
     return new HttpException(400, `Contract error #${code}`, 'CONTRACT_ERROR');
   }
 
-  return new HttpException(502, `Transaction simulation failed: ${raw}`, 'SIMULATION_FAILED');
+  return new HttpException(502, `Stellar transaction failed: ${raw}`, 'STELLAR_TX_FAILED');
 }

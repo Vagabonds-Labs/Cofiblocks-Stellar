@@ -20,7 +20,13 @@ export function TrustlineNotice({
   onCreated?: () => void
   t: any
 }) {
-  const { isRequired, isCreating, error, createTrustline } = useUSDCTrustline(walletAddress)
+  const { isRequired, isCreating, error, errorCode, createTrustline } =
+    useUSDCTrustline(walletAddress)
+
+  const errorText =
+    errorCode && t.has?.(`api_errors.${errorCode}`)
+      ? t(`api_errors.${errorCode}`)
+      : t('balances.trustline_error')
 
   if (!isRequired) return null
 
@@ -38,7 +44,7 @@ export function TrustlineNotice({
           <p className="mt-1 text-sm text-amber-800">
             {t('balances.trustline_required_message')}
           </p>
-          {error && <p className="mt-2 text-sm text-red-700">{t('balances.trustline_error')}</p>}
+          {error && <p className="mt-2 text-sm text-red-700">{errorText}</p>}
           <button
             onClick={handleClick}
             disabled={isCreating}

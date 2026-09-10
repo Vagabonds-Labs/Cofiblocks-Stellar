@@ -16,6 +16,7 @@ export function useUSDCTrustline(walletAddress: string | null) {
   const [isRequired, setIsRequired] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
 
   const check = useCallback(async () => {
     if (!walletAddress) return
@@ -35,6 +36,7 @@ export function useUSDCTrustline(walletAddress: string | null) {
     if (!walletAddress) return
     setIsCreating(true)
     setError(null)
+    setErrorCode(null)
     try {
       const { required, tx } = await onchainService.getUSDCTrustline()
       if (!required || !tx) {
@@ -48,10 +50,13 @@ export function useUSDCTrustline(walletAddress: string | null) {
     } catch (err: any) {
       console.error('Could not create USDC trustline', err)
       setError(err.message || 'Could not create USDC trustline')
+      // Con el código se puede explicar la causa, por ejemplo una wallet que
+      // firmó para otra red (WRONG_NETWORK_SIGNATURE).
+      setErrorCode(err?.code ?? null)
     } finally {
       setIsCreating(false)
     }
   }, [walletAddress])
 
-  return { isRequired, isCreating, error, createTrustline, refresh: check }
+  return { isRequired, isCreating, error, errorCode, createTrustline, refresh: check }
 }

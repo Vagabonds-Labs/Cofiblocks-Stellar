@@ -49,8 +49,9 @@ export class TxBuilder {
   /** Lectura: se simula y se devuelve el valor, sin tocar la red de escritura. */
   public async read<T = unknown>(request: InvocationRequest): Promise<T> {
     const tx = this.buildUnsigned(
-      // La simulación no valida la secuencia ni exige que la cuenta exista.
-      new Account(this.client.getServiceAddress(), '0'),
+      // La simulación no valida la secuencia ni exige que la cuenta exista:
+      // leer no tiene por qué depender de la clave secreta del backend.
+      new Account(this.client.getReadSourceAddress(), '0'),
       request,
       DEFAULT_VALIDITY_SECONDS
     );
@@ -133,7 +134,10 @@ export class TxBuilder {
     request: InvocationRequest
   ): void {
     if (rpc.Api.isSimulationError(simulation)) {
-      logger.error(
+      // `debug` y no `error`: el errorHandler ya loguea la HttpException que
+      // sale de acá, y hay fallos esperables (leer el saldo de una cuenta sin
+      // trustline) que no deberían ensuciar el log de errores.
+      logger.debug(
         { method: request.method, contract: request.contractId, error: simulation.error },
         'Soroban simulation failed'
       );

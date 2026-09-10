@@ -161,6 +161,18 @@ router.post(
   }
 );
 
+/**
+ * POST /api/onchain/testnet_usdc
+ *
+ * 100 USDC de prueba para la cuenta del usuario. Sólo en testnet: reemplaza al
+ * botón "Get $100 Sepolia Tokens" de Starknet.
+ */
+router.post('/testnet_usdc', authenticate, async (req: Request, res: Response, next) => {
+  const { walletAddress } = req.user!;
+  const result = await OnChainAccountsService.sendTestnetUSDC(walletAddress);
+  successResponse(res, result, 'Test USDC sent', 200);
+});
+
 router.get('/contracts_info', authenticate, requireAdmin, async (req: Request, res: Response, next) => {
   const contractsInfo = await OnChainEnvService.getStadisticsInContracts();
   successResponse(res, contractsInfo);

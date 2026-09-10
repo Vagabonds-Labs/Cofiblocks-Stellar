@@ -180,7 +180,12 @@
 		"trustline_required_message": "Your account cannot receive USDC yet. We enable it for you — no XLM needed.",
 		"trustline_button_create": "Enable USDC",
 		"trustline_creating": "Enabling...",
-		"trustline_error": "Could not enable USDC. Please try again."
+		"trustline_error": "Could not enable USDC. Please try again.",
+		"testnet_faucet_button": "Get 100 test USDC",
+		"testnet_faucet_sending": "Sending...",
+		"testnet_faucet_success": "Done! We sent you 100 test USDC.",
+		"testnet_faucet_error": "Could not send the test USDC. Please try again.",
+		"testnet_faucet_needs_trustline": "Enable USDC on your account first."
 	},
 	"profile": {
 		"title": "Profile Settings",
@@ -519,7 +524,19 @@
 		"FARM_HAS_PRODUCTS": "Farm has products, please delete them first",
 		"PRODUCT_HAS_RESERVED_STOCK": "This product is currently reserved by an order, please wait until the order is completed or cancelled",
 		"PRODUCT_HAS_PENDING_DELIVERY_ORDERS": "This product has pending delivery orders, you must mark them as delivered to be able to delete the product",
-		"IMAGE_TOO_LARGE": "Image is too large. Please select an image smaller than 1200x1200 pixels"
+		"IMAGE_TOO_LARGE": "Image is too large. Please select an image smaller than 1200x1200 pixels",
+		"WRONG_NETWORK_SIGNATURE": "Your wallet signed for a different Stellar network. Switch it to the network the app uses and try again. LOBSTR only signs on mainnet: use Freighter for testnet.",
+		"USDC_TRUSTLINE_MISSING": "Your account cannot receive USDC yet. Enable it from your profile.",
+		"ACCOUNT_MISSING": "Your Stellar account does not exist on this network yet. Enable USDC from your profile to create it.",
+		"INSUFFICIENT_ACCOUNT_RESERVE": "Your account does not have enough XLM reserve.",
+		"UNSUPPORTED_ACCOUNT_TYPE": "Smart wallets (C… accounts) are not supported yet. Connect a classic Stellar account.",
+		"INVALID_NONCE": "The signature expired or was already used. Connect your wallet again.",
+		"TOO_MANY_ITEMS": "A single purchase allows up to 16 different products.",
+		"NOT_ENOUGH_STOCK": "There is not enough stock for one of the products.",
+		"STATE_ARCHIVED": "This product's data is archived on the network. An administrator needs to restore it.",
+		"STELLAR_TX_FAILED": "The transaction failed on the Stellar network. Please try again.",
+		"TESTNET_FAUCET_LIMIT": "You already have 1000 test USDC or more.",
+		"TESTNET_ONLY": "Test USDC is only available on testnet."
 	},
 	"common": {
 		"cancel": "Cancel",

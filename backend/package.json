@@ -14,7 +14,8 @@
     "prisma:studio": "prisma studio",
     "prisma:format": "prisma format",
     "postinstall": "prisma generate",
-    "test:chain": "tsx scripts/checkout-e2e.ts"
+    "test:chain": "tsx scripts/checkout-e2e.ts",
+    "admin:grant": "tsx scripts/grant-admin.ts"
   },
   "keywords": [],
   "author": "",

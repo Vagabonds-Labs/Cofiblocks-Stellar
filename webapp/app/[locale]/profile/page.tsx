@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 
 import { useUser } from '@/lib/providers/UserProvider'
 import { useProfileForm, useBalances, useFundingActions } from '@/hooks'
-import { ProfileForm, BalancesSection, FundingSection, TrustlineNotice, DistributionClaims } from '@/components/profile'
+import { ProfileForm, BalancesSection, FundingSection, TrustlineNotice, DistributionClaims, TestnetFaucet } from '@/components/profile'
 
 export default function ProfilePage() {
   const t = useTranslations()
@@ -62,6 +62,13 @@ export default function ProfilePage() {
         <TrustlineNotice
           walletAddress={user?.walletAddress ?? null}
           onCreated={balances.fetchBalances}
+          t={t}
+        />
+
+        {/* USDC de prueba: sólo en testnet, como el botón de Sepolia de antes. */}
+        <TestnetFaucet
+          hasUsdcTrustline={balances.hasUsdcTrustline}
+          onFunded={balances.fetchBalances}
           t={t}
         />
 

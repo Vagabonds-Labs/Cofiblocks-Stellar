@@ -27,15 +27,14 @@ export async function getBalanceOf(token: PaymentToken, walletAddress: string): 
 
 /** XLM es un activo clásico: vive en Horizon, no en el storage de un contrato. */
 async function getNativeBalance(walletAddress: string): Promise<string> {
-    try {
-        const account = await contractFactory.getClient().getHorizon().loadAccount(walletAddress);
-        const native = account.balances.find((balance) => balance.asset_type === 'native');
-        return native ? usdToStroops(Number(native.balance)).toString() : '0';
-    } catch (error) {
+    const account = await contractFactory.getClient().loadAccountOrNull(walletAddress);
+    if (!account) {
         // Una cuenta que todavía no existe en la red no es un error de la app.
         logger.info({ walletAddress }, 'Account not found on Horizon, reporting zero balance');
         return '0';
     }
+    const native = account.balances.find((balance) => balance.asset_type === 'native');
+    return native ? usdToStroops(Number(native.balance)).toString() : '0';
 }
 
 /**
@@ -47,18 +46,15 @@ async function getNativeBalance(walletAddress: string): Promise<string> {
  */
 export async function hasUSDCTrustline(walletAddress: string): Promise<boolean> {
     const usdc = contractFactory.getUSDCService();
-    try {
-        const account = await contractFactory.getClient().getHorizon().loadAccount(walletAddress);
-        return account.balances.some(
-            (balance) =>
-                balance.asset_type !== 'native' &&
-                'asset_code' in balance &&
-                balance.asset_code === 'USDC' &&
-                balance.asset_issuer === usdc.issuer
-        );
-    } catch (error) {
-        return false;
-    }
+    const account = await contractFactory.getClient().loadAccountOrNull(walletAddress);
+    if (!account) return false;
+    return account.balances.some(
+        (balance) =>
+            balance.asset_type !== 'native' &&
+            'asset_code' in balance &&
+            balance.asset_code === 'USDC' &&
+            balance.asset_issuer === usdc.issuer
+    );
 }
 
 export async function getWalletBalances(walletAddress: string): Promise<WalletBalances> {

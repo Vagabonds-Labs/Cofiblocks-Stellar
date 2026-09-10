@@ -180,7 +180,12 @@
 		"trustline_required_message": "Sua conta ainda não pode receber USDC. Nós habilitamos para você — sem precisar de XLM.",
 		"trustline_button_create": "Habilitar USDC",
 		"trustline_creating": "Habilitando...",
-		"trustline_error": "Não foi possível habilitar USDC. Tente novamente."
+		"trustline_error": "Não foi possível habilitar USDC. Tente novamente.",
+		"testnet_faucet_button": "Obter 100 USDC de teste",
+		"testnet_faucet_sending": "Enviando...",
+		"testnet_faucet_success": "Pronto! Enviamos 100 USDC de teste para você.",
+		"testnet_faucet_error": "Não foi possível enviar os USDC de teste. Tente novamente.",
+		"testnet_faucet_needs_trustline": "Primeiro habilite USDC na sua conta."
 	},
 	"profile": {
 		"title": "Configurações de Perfil",
@@ -520,7 +525,19 @@
 		"FARM_HAS_PRODUCTS": "A fazenda tem produtos, por favor exclua-os primeiro",
 		"PRODUCT_HAS_RESERVED_STOCK": "Este produto está atualmente reservado por um pedido, por favor aguarde até que o pedido seja concluído ou cancelado",
 		"PRODUCT_HAS_PENDING_DELIVERY_ORDERS": "Este produto tem pedidos pendentes de entrega, você deve marcar como entregues para poder excluir o produto",
-		"IMAGE_TOO_LARGE": "A imagem é demasiado grande. Por favor, selecione uma imagem menor de 1200x1200 pixels"
+		"IMAGE_TOO_LARGE": "A imagem é demasiado grande. Por favor, selecione uma imagem menor de 1200x1200 pixels",
+		"WRONG_NETWORK_SIGNATURE": "Sua carteira assinou para outra rede Stellar. Mude para a rede que o app usa e tente novamente. A LOBSTR só assina na mainnet: para testnet use a Freighter.",
+		"USDC_TRUSTLINE_MISSING": "Sua conta ainda não pode receber USDC. Habilite no seu perfil.",
+		"ACCOUNT_MISSING": "Sua conta Stellar ainda não existe nesta rede. Habilite USDC no seu perfil para criá-la.",
+		"INSUFFICIENT_ACCOUNT_RESERVE": "Sua conta não tem reserva de XLM suficiente.",
+		"UNSUPPORTED_ACCOUNT_TYPE": "Smart wallets (contas C…) ainda não são suportadas. Conecte uma conta Stellar clássica.",
+		"INVALID_NONCE": "A assinatura expirou ou já foi usada. Conecte sua carteira novamente.",
+		"TOO_MANY_ITEMS": "Uma compra permite até 16 produtos diferentes.",
+		"NOT_ENOUGH_STOCK": "Não há estoque suficiente de um dos produtos.",
+		"STATE_ARCHIVED": "Os dados deste produto estão arquivados na rede. Um administrador precisa restaurá-los.",
+		"STELLAR_TX_FAILED": "A transação falhou na rede Stellar. Tente novamente.",
+		"TESTNET_FAUCET_LIMIT": "Você já tem 1000 USDC de teste ou mais.",
+		"TESTNET_ONLY": "USDC de teste só está disponível na testnet."
 	},
 	"common": {
 		"cancel": "Cancelar",

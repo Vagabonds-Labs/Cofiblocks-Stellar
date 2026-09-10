@@ -77,6 +77,22 @@ else
   echo "  desplegado"
 fi
 
+echo ""
+echo "→ admin del SAC del USDC de prueba"
+# El botón "Obtener 100 USDC de prueba" del perfil emite con `mint`, firmado por
+# la cuenta del backend: para eso tiene que ser admin del SAC. Sólo tiene sentido
+# con el activo propio de testnet — en mainnet el admin del USDC es Circle.
+ADMIN_ADDR=$(stellar keys address cofi-admin)
+CURRENT_ADMIN=$(stellar contract invoke --id "$USDC_SAC" --source-account cofi-admin \
+  --network "$NETWORK" --send=no -- admin 2>/dev/null | tr -d '"')
+if [ "$CURRENT_ADMIN" = "$ADMIN_ADDR" ]; then
+  echo "  ya es cofi-admin"
+else
+  stellar contract invoke --id "$USDC_SAC" --source-account cofi-usdc-issuer \
+    --network "$NETWORK" -- set_admin --new_admin "$ADMIN_ADDR" >/dev/null
+  echo "  admin → cofi-admin ($ADMIN_ADDR)"
+fi
+
 cat <<SUMMARY
 
 Constantes de testnet

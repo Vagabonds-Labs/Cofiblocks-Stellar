@@ -1,4 +1,4 @@
-import { rpc, Transaction, TransactionBuilder } from '@stellar/stellar-sdk';
+import { Keypair, rpc, StrKey, Transaction, TransactionBuilder } from '@stellar/stellar-sdk';
 
 import { HttpException } from '@/exceptions/HttpException';
 import { logger } from '@/lib/logger';
@@ -49,6 +49,8 @@ export class TxSubmitter {
       throw new HttpException(400, 'Transaction is not signed', 'UNSIGNED_TRANSACTION');
     }
 
+    this.assertSignedForThisNetwork(inner);
+
     if (options.feeBump === false) {
       return this.send(inner.toXDR());
     }
@@ -62,6 +64,40 @@ export class TxSubmitter {
     feeBump.sign(this.client.getServiceKeypair());
 
     return this.send(feeBump.toXDR());
+  }
+
+  /**
+   * Detecta una firma hecha para otra red.
+   *
+   * La firma de Stellar cubre el hash de la transacción, y ese hash incluye la
+   * passphrase de la red. Algunas wallets — LOBSTR — ignoran la red que se les
+   * pide y firman siempre para mainnet. En testnet eso llegaba como un
+   * `tx_bad_auth` que no explica nada; acá se reconoce y se dice qué pasó.
+   */
+  private assertSignedForThisNetwork(tx: Transaction): void {
+    const hash = tx.hash();
+    const signers = new Set<string>(
+      [tx.source, ...tx.operations.map((op) => op.source)].filter(
+        (address): address is string => !!address && StrKey.isValidEd25519PublicKey(address)
+      )
+    );
+
+    for (const address of signers) {
+      const keypair = Keypair.fromPublicKey(address);
+      const hint = keypair.signatureHint();
+      for (const signature of tx.signatures) {
+        // En el SDK 17 `hint` y `signature` son envoltorios con los bytes en `.value`.
+        if (!Buffer.from(signature.hint.value).equals(hint)) continue;
+        if (!keypair.verify(hash, Buffer.from(signature.signature.value))) {
+          throw new HttpException(
+            400,
+            'The wallet signed this transaction for a different Stellar network. ' +
+              'Switch the wallet to the network the app is using and try again.',
+            'WRONG_NETWORK_SIGNATURE'
+          );
+        }
+      }
+    }
   }
 
   /** Envía una transacción que ya firmó el backend (roles, reparto). */

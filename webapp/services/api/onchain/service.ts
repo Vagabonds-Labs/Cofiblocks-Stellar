@@ -55,6 +55,14 @@ export class OnchainService {
     return response.data;
   }
 
+  /** 100 USDC de prueba para la cuenta del usuario. Sólo en testnet. */
+  async requestTestnetUSDC(): Promise<{ tx_hash: string; amount: number }> {
+    const response = await api.post<{data: { tx_hash: string; amount: number }}>(
+      '/onchain/testnet_usdc', {}
+    );
+    return response.data;
+  }
+
   async getContractsInfo(): Promise<ContractsInfoResponse> {
     const response = await api.get<{data: ContractsInfoResponse}>('/onchain/contracts_info');
     return response.data;

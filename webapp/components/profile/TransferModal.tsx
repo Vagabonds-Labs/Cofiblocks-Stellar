@@ -12,6 +12,7 @@ interface TransferModalProps {
   tokenBalance: string
   userWalletAddress: string
   t: any
+  onTransferred?: () => void
 }
 
 export function TransferModal({
@@ -21,6 +22,7 @@ export function TransferModal({
   tokenBalance,
   userWalletAddress,
   t,
+  onTransferred,
 }: TransferModalProps) {
   const { handleWithdraw } = useWithdraw()
   const [amount, setAmount] = useState<string>('')
@@ -128,6 +130,7 @@ export function TransferModal({
         setAddress('')
         setErrors({})
         setSuccessTxHash(txHash || null)
+        onTransferred?.()
       } catch (error) {
         // Display error message
         const errorMessage = error instanceof Error 

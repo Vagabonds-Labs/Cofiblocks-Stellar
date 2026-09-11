@@ -2,19 +2,17 @@
 
 import { useState } from 'react'
 import QRCode from 'qrcode'
-import { ArrowDownTrayIcon } from '@heroicons/react/24/outline'
+import {
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  ChevronUpIcon,
+  ClipboardDocumentIcon,
+} from '@heroicons/react/24/outline'
 
 import { ensureUSDCTrustline } from '@/services/wallet/usdcTrustline'
 import { formatAddressForClipboard } from '@/utils/formatting'
 
-/**
- * "Recibir dinero", para quien entró con email o Google.
- *
- * Reemplaza a la "dirección de wallet" y al aviso de trustline: al tocarlo,
- * habilitamos USDC en la cuenta sin que el usuario vea nada y recién ahí
- * mostramos el QR. Mostrar la dirección antes sería peligroso: un envío de USDC
- * a una cuenta sin trustline rebota.
- */
+/** Prepare USDC before revealing receiving details, including for embedded accounts. */
 export function ReceiveMoney({
   walletAddress,
   onReady,
@@ -25,11 +23,21 @@ export function ReceiveMoney({
   t: any
 }) {
   const [state, setState] = useState<'idle' | 'preparing' | 'ready'>('idle')
+  const [expanded, setExpanded] = useState(false)
   const [qr, setQr] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   const open = async () => {
+    if (state === 'preparing') return
+    if (expanded) {
+      setExpanded(false)
+      return
+    }
+    if (state === 'ready') {
+      setExpanded(true)
+      return
+    }
     setError(null)
     setState('preparing')
     try {
@@ -37,6 +45,7 @@ export function ReceiveMoney({
       if (created) onReady?.()
       setQr(await QRCode.toDataURL(walletAddress, { margin: 1, width: 200 }))
       setState('ready')
+      setExpanded(true)
     } catch (err) {
       console.error('Could not prepare account to receive USDC', err)
       setError(t('balances.receive_error'))
@@ -45,39 +54,85 @@ export function ReceiveMoney({
   }
 
   const copy = async () => {
-    await navigator.clipboard.writeText(formatAddressForClipboard(walletAddress))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
-  if (state !== 'ready') {
-    return (
-      <div className="flex flex-col items-center gap-2">
-        <button
-          onClick={open}
-          disabled={state === 'preparing'}
-          className="flex items-center gap-2 px-6 py-3 bg-orange-500 text-white font-medium rounded-lg
-                     hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <ArrowDownTrayIcon className="w-5 h-5" />
-          {state === 'preparing' ? t('balances.receive_preparing') : t('balances.receive_button')}
-        </button>
-        {error && <p className="text-sm text-red-700">{error}</p>}
-      </div>
-    )
+    setError(null)
+    try {
+      await navigator.clipboard.writeText(
+        formatAddressForClipboard(walletAddress)
+      )
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setError(t('profile.dashboard.copy_error'))
+    }
   }
 
   return (
-    <div className="flex flex-col items-center gap-3 max-w-md">
-      <p className="font-medium text-gray-900">{t('balances.receive_button')}</p>
-      {qr && <img src={qr} alt="QR" className="w-48 h-48" />}
-      <p className="font-mono text-xs break-all text-gray-700 bg-gray-50 rounded-lg px-3 py-2">
-        {walletAddress}
-      </p>
-      <button onClick={copy} className="text-sm text-orange-600 hover:text-orange-700">
-        {copied ? t('balances.copied') : t('balances.copy_address')}
+    <div>
+      <button
+        onClick={open}
+        disabled={state === 'preparing'}
+        aria-expanded={expanded}
+        aria-controls="profile-receive-details"
+        className="btn-secondary flex min-h-12 w-full items-center justify-center gap-2 text-sm"
+      >
+        {state === 'preparing' ? (
+          <ArrowPathIcon className="h-5 w-5 animate-spin" aria-hidden="true" />
+        ) : expanded ? (
+          <ChevronUpIcon className="h-5 w-5" aria-hidden="true" />
+        ) : (
+          <ArrowDownTrayIcon className="h-5 w-5" aria-hidden="true" />
+        )}
+        {t(
+          state === 'preparing'
+            ? 'balances.receive_preparing'
+            : expanded
+              ? 'profile.dashboard.close_receive'
+              : 'balances.receive_button'
+        )}
       </button>
-      <p className="text-xs text-gray-500">{t('balances.receive_description')}</p>
+      <div id="profile-receive-details" hidden={!expanded}>
+        {state === 'ready' && (
+          <div className="mt-4 flex flex-col items-center gap-4 rounded-2xl border border-[#e0e8e1] bg-[#f7f9f6] p-4 text-center">
+            <p className="text-sm font-semibold text-[#214f40]">
+              {t('profile.dashboard.receive_title')}
+            </p>
+            {qr && (
+              <img
+                src={qr}
+                alt={t('profile.dashboard.receive_qr')}
+                width={200}
+                height={200}
+                className="h-44 w-44 rounded-xl border border-[#e5ebe6] bg-white p-2"
+              />
+            )}
+            <p className="w-full break-all rounded-lg bg-white p-3 font-mono text-xs text-gray-700">
+              {walletAddress}
+            </p>
+            <button
+              onClick={copy}
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-[#286b56]"
+            >
+              <ClipboardDocumentIcon className="h-4 w-4" aria-hidden="true" />
+              {copied ? t('balances.copied') : t('balances.copy_address')}
+            </button>
+            <p className="text-xs leading-relaxed text-[#5a6760]">
+              {t('balances.receive_description')}
+            </p>
+          </div>
+        )}
+      </div>
+      <p role="status" className="sr-only">
+        {copied
+          ? t('balances.copied')
+          : state === 'preparing'
+            ? t('balances.receive_preparing')
+            : ''}
+      </p>
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-red-700">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

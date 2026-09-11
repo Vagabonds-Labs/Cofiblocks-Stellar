@@ -14,10 +14,12 @@ export function DistributionClaims({
   walletAddress,
   onClaimed,
   t,
+  simple = false,
 }: {
   walletAddress: string | null
   onClaimed?: () => void
   t: any
+  simple?: boolean
 }) {
   const { claimable, claimingRole, error, lastTxHash, claim } =
     useDistributionClaim(walletAddress)
@@ -30,7 +32,7 @@ export function DistributionClaims({
   }
 
   return (
-    <div className="mt-8 rounded-lg border border-gray-200 bg-white p-6">
+    <div className="surface-card p-5 sm:p-6">
       <div className="flex items-start gap-3">
         <GiftIcon className="mt-0.5 h-6 w-6 flex-shrink-0 text-[rgb(40,107,86)]" />
         <div className="flex-1">
@@ -49,8 +51,9 @@ export function DistributionClaims({
                   <p className="text-sm font-medium text-gray-900">
                     {t(`distribution.role_${entry.role.toLowerCase()}`)}
                   </p>
-                  <p className="text-lg font-semibold text-green-700 tabular-nums">
-                    ${entry.usd.toFixed(2)} USDC
+                  <p className="text-lg font-semibold tabular-nums text-green-700">
+                    ${entry.usd.toFixed(2)}
+                    {!simple && ' USDC'}
                   </p>
                 </div>
                 <button
@@ -69,7 +72,7 @@ export function DistributionClaims({
           {lastTxHash && (
             <p className="mt-3 break-all text-sm text-green-700">
               {t('distribution.claim_success')}{' '}
-              <span className="font-mono">{lastTxHash}</span>
+              <span className="font-mono">{!simple && lastTxHash}</span>
             </p>
           )}
           {error && <p className="mt-3 text-sm text-red-700">{error}</p>}

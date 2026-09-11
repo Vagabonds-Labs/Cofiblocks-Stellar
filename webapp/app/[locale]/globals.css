@@ -129,3 +129,28 @@
 .menu-item-danger:hover {
   background: rgba(var(--cb-danger), 0.16);
 }
+
+/* Scoped account controls: avoid DaisyUI button outlines outside keyboard focus. */
+.profile-page :is(.btn-primary, .btn-secondary) {
+  outline: none;
+}
+
+.profile-page .btn-secondary {
+  background: rgb(var(--cb-surface) / 0.92);
+  border: 1px solid rgb(var(--cb-border) / 0.95);
+}
+
+.profile-page .field-input {
+  border: 1px solid rgb(var(--cb-border) / 0.95);
+  background: rgb(var(--cb-surface) / 0.95);
+}
+
+.profile-page .field-input:focus {
+  border-color: rgb(var(--cb-primary) / 0.5);
+  box-shadow: 0 0 0 4px rgb(var(--cb-primary) / 0.12);
+}
+
+.profile-page :is(a, button, summary):focus-visible {
+  outline: 3px solid #b88535;
+  outline-offset: 4px;
+}

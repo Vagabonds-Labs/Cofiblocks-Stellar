@@ -25,9 +25,12 @@ export function TestnetFaucet({
   t: any
 }) {
   const [isSending, setIsSending] = useState(false)
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(
+    null
+  )
 
-  if (process.env.NEXT_PUBLIC_STELLAR_NETWORK !== 'testnet' || !walletAddress) return null
+  if (process.env.NEXT_PUBLIC_STELLAR_NETWORK !== 'testnet' || !walletAddress)
+    return null
 
   const handleClick = async () => {
     setIsSending(true)
@@ -52,11 +55,11 @@ export function TestnetFaucet({
   }
 
   return (
-    <div className="flex flex-col items-center gap-2 my-6">
+    <div className="mt-4 flex flex-col items-start gap-2">
       <button
         onClick={handleClick}
         disabled={isSending}
-        className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-lg shadow-md hover:from-orange-600 hover:to-orange-700 hover:shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+        className="rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSending
           ? t('balances.testnet_faucet_sending')
@@ -65,7 +68,12 @@ export function TestnetFaucet({
             : t('balances.testnet_faucet_button')}
       </button>
       {message && (
-        <p className={`text-sm ${message.ok ? 'text-green-700' : 'text-red-700'}`}>{message.text}</p>
+        <p
+          role="status"
+          className={`text-sm ${message.ok ? 'text-green-700' : 'text-red-700'}`}
+        >
+          {message.text}
+        </p>
       )}
     </div>
   )

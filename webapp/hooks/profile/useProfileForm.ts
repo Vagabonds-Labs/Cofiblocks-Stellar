@@ -54,6 +54,7 @@ export function useProfileForm(user: any, t: any, refreshUser: () => Promise<voi
   }
 
   const handleSaveField = async (field: 'name' | 'email') => {
+    if (saving) return
     setError(null)
     setSuccess(false)
 
@@ -113,6 +114,8 @@ export function useProfileForm(user: any, t: any, refreshUser: () => Promise<voi
   }
 
   const handleStartEdit = (field: 'name' | 'email') => {
+    if (saving) return
+    setFormData({ name: user?.name || '', email: user?.email || '' })
     setEditingField(field)
     setError(null)
     setSuccess(false)

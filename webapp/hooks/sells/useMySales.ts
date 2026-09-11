@@ -6,6 +6,7 @@ import { Order } from '@/services/api/orders'
 import { useUser } from '@/lib/providers/UserProvider'
 import { sellsService } from '@/services/api/sells'
 import { walletService } from '@/services/wallet/walletService'
+import { ensureUSDCTrustline } from '@/services/wallet/usdcTrustline'
 import { useTranslations } from 'next-intl'
 
 export type FilterType = 'pending' | 'completed' | 'claims'
@@ -78,6 +79,9 @@ export function useMySales() {
     setClaimSuccessMessage(null)
     
     try {
+      // Cobrar es recibir USDC: sin trustline el pago rebota. Para quien entró
+      // con email o Google, este es el primer momento en que la necesita.
+      if (user?.walletAddress) await ensureUSDCTrustline(user.walletAddress)
       const prepared = await sellsService.getClaimTx()
       const signedXdr = await walletService.signTransaction(prepared)
 

@@ -4,6 +4,7 @@ import { ArrowPathIcon, WalletIcon } from '@heroicons/react/24/outline'
 import { useState } from 'react'
 import { formatAddressForClipboard } from '@/utils/formatting'
 import { BalanceCard } from './BalanceCard'
+import { ReceiveMoney } from './ReceiveMoney'
 import { TransferModal } from './TransferModal'
 
 /**
@@ -14,7 +15,14 @@ function shortenAddress(address: string, chars = 12) {
   return `${address.slice(0, chars + 2)}...${address.slice(-chars)}`
 }
 
-export function BalancesSection({ balances, user, t }: any) {
+/**
+ * Saldo y dirección de la cuenta.
+ *
+ * `simple` es para quien entró con email o Google y no sabe qué es una wallet:
+ * ve "Tu saldo" en dólares y un botón de "Recibir dinero", sin dirección, sin
+ * USDC ni XLM. Los usuarios de Freighter o LOBSTR ven todo como antes.
+ */
+export function BalancesSection({ balances, user, t, simple = false }: any) {
   const [copied, setCopied] = useState(false)
   const [transferModalOpen, setTransferModalOpen] = useState(false)
   const [selectedTokenForTransfer, setSelectedTokenForTransfer] = useState<{
@@ -44,7 +52,16 @@ export function BalancesSection({ balances, user, t }: any) {
 
   return (
     <div className="mt-10 flex flex-col items-center gap-12 text-center">
+      {simple && user?.walletAddress && (
+        <ReceiveMoney
+          walletAddress={user.walletAddress}
+          onReady={balances.fetchBalances}
+          t={t}
+        />
+      )}
+
       {/* Wallet address */}
+      {!simple && (
       <div className="flex flex-col items-center gap-3">
         {/* Icon + label */}
         <div className="flex flex-col items-center gap-1">
@@ -107,6 +124,7 @@ export function BalancesSection({ balances, user, t }: any) {
           </p>
         )}
       </div>
+      )}
 
       {/* Balances */}
       <div className="w-full max-w-3xl">
@@ -138,8 +156,8 @@ export function BalancesSection({ balances, user, t }: any) {
         {/* Main USDC Balance */}
         <div className="grid grid-cols-1 sm:grid-cols-1 gap-6 mb-8">
           <BalanceCard
-            label={t('balances.currency_usdc')}
-            amount={balances.balances.usdc}
+            label={simple ? t('balances.your_balance') : t('balances.currency_usdc')}
+            amount={simple ? `$${balances.balances.usdc}` : balances.balances.usdc}
             color="blue"
             showMenu={true}
             onTransfer={() => handleTransfer(t('balances.currency_usdc'))}
@@ -148,7 +166,9 @@ export function BalancesSection({ balances, user, t }: any) {
         </div>
 
         {/* XLM: sólo informativo. El backend paga los fees vía fee-bump, así que
-            el usuario no necesita tener XLM para comprar. */}
+            el usuario no necesita tener XLM para comprar. En modo simple ni se
+            muestra: para esos usuarios es ruido. */}
+        {!simple && (
         <div className="mt-8">
           <h3 className="text-lg font-medium text-gray-500 mb-4">
             {t('balances.other_tokens')}
@@ -164,6 +184,7 @@ export function BalancesSection({ balances, user, t }: any) {
             />
           </div>
         </div>
+        )}
       </div>
 
       {/* Transfer Modal */}

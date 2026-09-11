@@ -6,11 +6,13 @@ import { walletService } from '@/services/wallet/walletService'
 /**
  * Vigila que la wallet conectada siga siendo la de la sesión.
  *
- * Ya no hay que distinguir entre proveedores: sólo se entra por wallet.
+ * Sólo aplica a las wallets de extensión, donde el usuario puede cambiar de
+ * cuenta sin avisarnos. La wallet de Privy está atada a la sesión de email o
+ * Google y no cambia sola.
  */
 export function useWalletWatcher(user: any, logoutCallback: () => void) {
   useEffect(() => {
-    if (!user?.walletAddress) return
+    if (!user?.walletAddress || user.walletProvider === 'privy') return
 
     const interval = setInterval(async () => {
       const address = await walletService.trySilent()

@@ -152,6 +152,10 @@ export const registerWalletSchema = z.object({
     nonce: z
       .string()
       .min(1, 'Nonce is required'),
+    // Con qué firmó el usuario: una wallet de Stellar o la wallet embebida de
+    // Privy (login con email o Google). Sólo le dice al webapp con qué firmar
+    // después; la verificación de la firma es la misma en los dos casos.
+    provider: z.enum(['stellar', 'privy']).optional(),
   }),
 });
 

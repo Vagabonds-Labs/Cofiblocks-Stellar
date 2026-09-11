@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { onchainService } from '@/services/api/onchain'
-import { walletService } from '@/services/wallet/walletService'
+import { ensureUSDCTrustline } from '@/services/wallet/usdcTrustline'
 
 /**
  * Alta de la trustline a USDC, patrocinada por el backend.
@@ -38,14 +38,7 @@ export function useUSDCTrustline(walletAddress: string | null) {
     setError(null)
     setErrorCode(null)
     try {
-      const { required, tx } = await onchainService.getUSDCTrustline()
-      if (!required || !tx) {
-        setIsRequired(false)
-        return
-      }
-      // El backend ya firmó como patrocinador; falta la firma del usuario.
-      const signedXdr = await walletService.signTransactionAs(tx, walletAddress)
-      await onchainService.submitUSDCTrustline(signedXdr)
+      await ensureUSDCTrustline(walletAddress)
       setIsRequired(false)
     } catch (err: any) {
       console.error('Could not create USDC trustline', err)

@@ -8,6 +8,10 @@ import { useRouter } from 'next/navigation'
 import { useUser } from '@/lib/providers/UserProvider'
 import { useProfileForm, useBalances, useFundingActions } from '@/hooks'
 import { ProfileForm, BalancesSection, FundingSection, TrustlineNotice, DistributionClaims, TestnetFaucet } from '@/components/profile'
+import { ExportWalletKey } from '@/components/profile/ExportWalletKey'
+import { LoginMethodsLinks } from '@/components/profile/LoginMethodsLinks'
+import { PASSKEY_LOGIN_ENABLED, SOCIAL_LOGIN_ENABLED } from '@/lib/auth/loginMethods'
+import { isPrivyEnabled } from '@/services/wallet/privySigner'
 
 export default function ProfilePage() {
   const t = useTranslations()
@@ -20,6 +24,10 @@ export default function ProfilePage() {
   const funding = useFundingActions(user, t)
 
   const error = userError || form.error || balances.balancesError || funding.error
+
+  // Quien entró con email o Google no sabe qué es una wallet ni una trustline:
+  // ve su saldo en dólares y un "Recibir dinero", y USDC se habilita solo.
+  const simple = user?.walletProvider === 'privy'
 
   if (loading)
     return <p className="text-center py-12">{t('profile.loading')}</p>
@@ -58,22 +66,26 @@ export default function ProfilePage() {
         {/* FORM */}
         <ProfileForm form={form} user={user} t={t} />
 
-        {/* Sin trustline la cuenta no puede recibir USDC. El backend la patrocina. */}
-        <TrustlineNotice
-          walletAddress={user?.walletAddress ?? null}
-          onCreated={balances.fetchBalances}
-          t={t}
-        />
+        {/* Sin trustline la cuenta no puede recibir USDC. El backend la patrocina.
+            En modo simple no se muestra: se habilita sola al recibir o cobrar. */}
+        {!simple && (
+          <TrustlineNotice
+            walletAddress={user?.walletAddress ?? null}
+            onCreated={balances.fetchBalances}
+            t={t}
+          />
+        )}
 
         {/* USDC de prueba: sólo en testnet, como el botón de Sepolia de antes. */}
         <TestnetFaucet
-          hasUsdcTrustline={balances.hasUsdcTrustline}
+          walletAddress={user?.walletAddress ?? null}
+          simple={simple}
           onFunded={balances.fetchBalances}
           t={t}
         />
 
         {/* BALANCES */}
-        <BalancesSection balances={balances} user={user} t={t} />
+        <BalancesSection balances={balances} user={user} t={t} simple={simple} />
 
         {/* Lo que le toca al usuario del reparto de utilidades, si hay algo. */}
         <DistributionClaims
@@ -82,10 +94,31 @@ export default function ProfilePage() {
           t={t}
         />
 
-        {/* FUNDING BUTTONS */}
-        <div className="grid grid-cols-1 gap-4 mt-8">
-          <FundingSection funding={funding} user={user} t={t} />
-        </div>
+        {/* El bridge desde otras cadenas sólo le sirve a quien ya tiene cripto. */}
+        {!simple && (
+          <div className="grid grid-cols-1 gap-4 mt-8">
+            <FundingSection funding={funding} user={user} t={t} />
+          </div>
+        )}
+
+        {/* Vincular más formas de entrar a la misma cuenta. Sin esto, entrar con
+            otro método crea otra cuenta, con otra wallet y otro saldo. También
+            es donde se agrega una passkey. Con sólo correo no hay nada que
+            mostrar. */}
+        {isPrivyEnabled() && simple && (SOCIAL_LOGIN_ENABLED || PASSKEY_LOGIN_ENABLED) && (
+          <LoginMethodsLinks t={t} />
+        )}
+
+        {/* Quien entró con email o Google puede llevarse su clave a otra wallet.
+            Queda plegado: es para usuarios avanzados. */}
+        {isPrivyEnabled() && simple && user?.walletAddress && (
+          <details className="mt-10 text-left">
+            <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
+              {t('balances.advanced_options')}
+            </summary>
+            <ExportWalletKey walletAddress={user.walletAddress} t={t} />
+          </details>
+        )}
       </main>
     </div>
   )

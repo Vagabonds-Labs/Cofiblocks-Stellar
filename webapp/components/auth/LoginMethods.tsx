@@ -5,22 +5,30 @@ import { useTranslations } from 'next-intl'
 import { WalletIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
 import { LoginMethodsProps } from './types'
+import { PrivyLoginPanel } from './PrivyLoginPanel'
 import { isMobile } from '../../utils/platform'
+import { isPrivyEnabled } from '@/services/wallet/privySigner'
 
 /**
- * Único camino de entrada: conectar la wallet y firmar.
+ * Formas de entrar.
  *
- * Se fueron el magic link, Google y Apple junto con Cavos. El modal de
- * selección de wallet lo abre el Stellar Wallets Kit — Freighter, xBull, Albedo,
- * Lobstr y Rabet.
+ * La app es para gente que no viene de web3, así que lo principal es entrar con
+ * correo, teléfono, Google, Apple o X (Privy). Conectar una wallet de
+ * Stellar sigue disponible, pero como un link discreto al final: el modal lo
+ * abre el Stellar Wallets Kit (Freighter, xBull, Albedo, Lobstr y Rabet).
+ *
+ * Sin `NEXT_PUBLIC_PRIVY_APP_ID` la wallet es la única opción y vuelve a ser el
+ * botón principal.
  */
 export function LoginMethods({
   walletError,
   isConnecting,
   onWallet,
+  onEmailLoggedIn,
 }: LoginMethodsProps) {
   const t = useTranslations()
   const [showMobileWalletWarning, setShowMobileWalletWarning] = useState(false)
+  const privy = isPrivyEnabled()
 
   const handleWalletClick = () => {
     if (isMobile()) {
@@ -36,27 +44,42 @@ export function LoginMethods({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {privy && <PrivyLoginPanel onLoggedIn={onEmailLoggedIn} />}
+
       {walletError && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {walletError}
         </div>
       )}
 
-      {/* Wallet */}
-      <button
-        onClick={handleWalletClick}
-        disabled={isConnecting}
-        className="w-full bg-orange-500 text-white py-3 rounded-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <WalletIcon className="w-5 h-5" />
-        {isConnecting ? t('auth.button_connecting') : t('auth.button_connect_wallet')}
-      </button>
+      {privy ? (
+        <div className="border-t border-gray-100 pt-5 text-center text-sm text-[rgb(var(--cb-muted))]">
+          {t('auth.wallet_prompt')}{' '}
+          <button
+            onClick={handleWalletClick}
+            disabled={isConnecting}
+            className="inline-flex items-center gap-1 font-medium text-[rgb(var(--cb-primary))] hover:underline disabled:opacity-50"
+          >
+            <WalletIcon className="h-4 w-4" />
+            {isConnecting ? t('auth.button_connecting') : t('auth.wallet_link')}
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={handleWalletClick}
+          disabled={isConnecting}
+          className="btn-primary flex w-full items-center justify-center gap-2 py-3"
+        >
+          <WalletIcon className="h-5 w-5" />
+          {isConnecting ? t('auth.button_connecting') : t('auth.button_connect_wallet')}
+        </button>
+      )}
 
       {/* Mobile wallet warning modal */}
       {showMobileWalletWarning && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 space-y-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
             <div className="flex items-start gap-3">
               <ExclamationTriangleIcon className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
               <p className="text-gray-700 text-sm">
@@ -67,14 +90,14 @@ export function LoginMethods({
               <button
                 type="button"
                 onClick={() => setShowMobileWalletWarning(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
               >
                 {t('auth.wallet_mobile_cancel')}
               </button>
               <button
                 type="button"
                 onClick={handleWalletContinue}
-                className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                className="btn-primary flex-1"
               >
                 {t('auth.wallet_mobile_continue')}
               </button>

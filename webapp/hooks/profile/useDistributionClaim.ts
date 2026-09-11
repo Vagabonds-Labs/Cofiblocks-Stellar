@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { onchainService } from '@/services/api/onchain'
 import type { ClaimableRole, RoleBalance } from '@/services/api/onchain/types'
 import { walletService } from '@/services/wallet/walletService'
+import { ensureUSDCTrustline } from '@/services/wallet/usdcTrustline'
 
 /**
  * Reparto de utilidades: saldos del usuario y su reclamo.
@@ -46,6 +47,8 @@ export function useDistributionClaim(walletAddress: string | null) {
       setError(null)
       setLastTxHash(null)
       try {
+        // Cobrar es recibir USDC: sin trustline el pago rebota.
+        await ensureUSDCTrustline(walletAddress)
         const prepared = await onchainService.getDistributionClaim(role)
         const signedXdr = await walletService.signTransactionAs(prepared, walletAddress)
         const { tx_hash } = await onchainService.submitDistributionClaim(role, signedXdr)

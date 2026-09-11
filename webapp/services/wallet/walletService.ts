@@ -8,6 +8,7 @@ import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr";
 import { RabetModule } from "@creit.tech/stellar-wallets-kit/modules/rabet";
 
 import { authService } from "@/services/auth/authService";
+import { privySigner } from "@/services/wallet/privySigner";
 import { PreparedTransaction } from "@/types/contracts";
 
 const SELECTED_WALLET_KEY = "cofiblocks:selected-wallet";
@@ -30,9 +31,16 @@ function networkFromEnv(): Networks {
  * Wallets soportadas: Freighter, xBull, Albedo, Lobstr y Rabet. WalletConnect
  * requiere `@reown/appkit` y un projectId de Reown; se agrega como un módulo más
  * en `init()` cuando esas dos cosas estén.
+ *
+ * Los usuarios que entraron con email o Google (`walletProvider: 'privy'`)
+ * firman con su wallet embebida de Privy en vez del kit.
  */
 class WalletService {
   private initialized = false;
+
+  private isPrivyUser(): boolean {
+    return authService.getCurrentUser()?.walletProvider === "privy";
+  }
 
   /** Idempotente: el kit se inicializa una sola vez, y sólo en el browser. */
   private init(): void {
@@ -93,6 +101,9 @@ class WalletService {
   }
 
   async disconnect(): Promise<void> {
+    // Cerrar también la sesión de Privy: si no, el próximo "continuar con
+    // email" entraría directo con la cuenta anterior.
+    await privySigner.logout().catch((err) => console.error("Privy logout error:", err));
     this.init();
     try {
       await StellarWalletsKit.disconnect();
@@ -130,12 +141,18 @@ class WalletService {
    * así el usuario nunca necesita XLM.
    */
   async signTransaction(prepared: PreparedTransaction): Promise<string> {
-    this.init();
-    const address = await this.assertSessionWallet();
-
     if (prepared.valid_until * 1000 < Date.now()) {
       throw new Error("The transaction expired before being signed. Try again.");
     }
+
+    if (this.isPrivyUser()) {
+      const user = authService.getCurrentUser();
+      if (!user?.walletAddress) throw new Error("No wallet address found");
+      return privySigner.signTransaction(prepared.xdr, prepared.network_passphrase, user.walletAddress);
+    }
+
+    this.init();
+    const address = await this.assertSessionWallet();
 
     const { signedTxXdr } = await StellarWalletsKit.signTransaction(prepared.xdr, {
       networkPassphrase: prepared.network_passphrase,
@@ -151,6 +168,9 @@ class WalletService {
    * tenga nada más que una wallet conectada.
    */
   async signTransactionAs(prepared: PreparedTransaction, address: string): Promise<string> {
+    if (this.isPrivyUser() || privySigner.hasAddress(address)) {
+      return privySigner.signTransaction(prepared.xdr, prepared.network_passphrase, address);
+    }
     this.init();
     const { signedTxXdr } = await StellarWalletsKit.signTransaction(prepared.xdr, {
       networkPassphrase: prepared.network_passphrase,

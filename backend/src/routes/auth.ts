@@ -108,7 +108,7 @@ router.delete(
   });
   
   router.post('/register_wallet', validate(registerWalletSchema), async (req: Request, res: Response, next) => {
-    const { address, signature, nonce }: RegisterWalletRequest = req.body;
+    const { address, signature, nonce, provider }: RegisterWalletRequest = req.body;
   
     // Get session data from request
     const sessionData = {
@@ -120,7 +120,7 @@ router.delete(
     const { user, isNewUser } = await UsersService.registerUser(
       {
         walletAddress: address,
-        walletProvider: 'stellar',
+        walletProvider: provider ?? 'stellar',
         signature: signature,
         nonce,
       }

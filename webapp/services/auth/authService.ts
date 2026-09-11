@@ -126,8 +126,16 @@ export class AuthService {
     return res.data;
   }
 
-  /** `signature` es la firma SEP-53 en base64, no el par (r, s) de Starknet. */
-  async registerWallet(address: string, signature: string, nonce: string) {
+  /**
+   * `signature` es la firma SEP-53 en base64, no el par (r, s) de Starknet.
+   * `provider` indica con qué se firmó: una wallet de Stellar o Privy.
+   */
+  async registerWallet(
+    address: string,
+    signature: string,
+    nonce: string,
+    provider: "stellar" | "privy" = "stellar"
+  ) {
     const res = await api.post<{
       data: {
         user: User;
@@ -137,6 +145,7 @@ export class AuthService {
       address,
       signature,
       nonce,
+      provider,
     });
 
     // Access token is set as HttpOnly cookie by backend

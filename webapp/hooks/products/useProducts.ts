@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { productService, type Product } from '@/services/api/products'
 import type { FilterState } from '@/types/products'
 
@@ -8,6 +8,11 @@ export function useProducts(filters: FilterState) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [retryCount, setRetryCount] = useState(0)
+  const [catalogRegions, setCatalogRegions] = useState<string[]>([])
+  const [catalogRoasts, setCatalogRoasts] = useState<string[]>([])
+  const retry = useCallback(() => setRetryCount((count) => count + 1), [])
 
   // Convert filters → query string once
   const query = useMemo(() => {
@@ -38,34 +43,44 @@ export function useProducts(filters: FilterState) {
         })
         const list = response || []
 
+        if (controller.signal.aborted) return
         setProducts(list)
+        // Keep all filter choices available when the results are narrowed down.
+        if (!query) {
+          setCatalogRegions(
+            [...new Set(list.map((p) => p.farm.region).filter(Boolean))].sort()
+          )
+          setCatalogRoasts(
+            [...new Set(list.map((p) => p.roastLevel).filter(Boolean))].sort()
+          )
+        }
       } catch (err: any) {
-        if (err?.name !== 'AbortError') {
+        if (!controller.signal.aborted && err?.name !== 'AbortError') {
           setError(err?.message ?? 'Failed to load products')
         }
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       }
     }
 
     loadProducts()
 
     return () => controller.abort()
-  }, [query])
+  }, [query, retryCount])
 
   // Memo: unique regions
   const uniqueRegions = useMemo(() => {
     const set = new Set<string>()
     products.forEach((p) => p.farm.region && set.add(p.farm.region))
-    return [...set].sort()
-  }, [products])
+    return [...new Set([...catalogRegions, ...set])].sort()
+  }, [products, catalogRegions])
 
   // Memo: roast levels
   const uniqueRoastLevels = useMemo(() => {
     const set = new Set<string>()
     products.forEach((p) => p.roastLevel && set.add(p.roastLevel))
-    return [...set].sort()
-  }, [products])
+    return [...new Set([...catalogRoasts, ...set])].sort()
+  }, [products, catalogRoasts])
 
   return {
     products,
@@ -73,5 +88,6 @@ export function useProducts(filters: FilterState) {
     error,
     uniqueRegions,
     uniqueRoastLevels,
+    retry,
   }
 }

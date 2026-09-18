@@ -1,60 +1,68 @@
 'use client'
 
-import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
 
 export function Footer() {
-  const t = useTranslations();
+  const t = useTranslations()
+  const locale = useLocale()
 
   return (
-    <footer className="mt-20 border-t border-white/70 bg-[rgba(27,49,40,0.95)] text-slate-200">
-      <div className="app-container py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Links Section */}
+    <footer className="border-t border-[#dfe4d8] bg-[#eaf0e5] text-[#53634f]">
+      <div className="app-container py-10">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-[2fr_1fr_1fr]">
           <div>
-            <h3 className="text-white font-semibold mb-4 text-md tracking-wide">{t('footer.links')}</h3>
-            <ul className="space-y-2">
+            <Link
+              href={`/${locale}`}
+              className="text-sm font-bold tracking-[0.14em] text-[#284e3b]"
+            >
+              COFIBLOCKS
+            </Link>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed">
+              {t('footer.description')}
+            </p>
+          </div>
+          <div>
+            <h2 className="mb-3 text-sm font-semibold text-[#284e3b]">
+              {t('footer.links')}
+            </h2>
+            <ul className="space-y-2 text-sm">
               <li>
-                <Link 
-                  href="/help" 
-                  className="hover:text-amber-300 transition-colors duration-200 text-sm"
+                <Link
+                  href={`/${locale}/#coffee-catalog`}
+                  className="underline-offset-4 hover:underline"
                 >
-                  {t('footer.help')}
+                  {t('home.explore_coffees')}
                 </Link>
               </li>
               <li>
-                <Link 
+                <a
                   href="https://cofiblocks.com"
                   target="_blank"
-                  className="hover:text-amber-300 transition-colors duration-200 text-sm"
+                  rel="noopener noreferrer"
+                  className="underline-offset-4 hover:underline"
                 >
                   {t('footer.about')}
-                </Link>
+                </a>
               </li>
             </ul>
           </div>
-
-          {/* Contact Section */}
           <div>
-            <h3 className="text-white font-semibold mb-4 text-md">{t('footer.contact')}</h3>
-            <p className="text-sm">
-              <a 
-                href="mailto:info@cofiblocks.com"
-                className="hover:text-amber-300 transition-colors duration-200 text-sm"
-              >
-                info@cofiblocks.com
-              </a>
-            </p>
-          </div>
-
-          {/* Trademark Section */}
-          <div className="md:text-right">
-            <p className="text-sm text-slate-300/80">
-              {t('footer.trademark')}
-            </p>
+            <h2 className="mb-3 text-sm font-semibold text-[#284e3b]">
+              {t('footer.contact')}
+            </h2>
+            <a
+              href="mailto:info@cofiblocks.com"
+              className="text-sm underline-offset-4 hover:underline"
+            >
+              info@cofiblocks.com
+            </a>
           </div>
         </div>
+        <p className="mt-8 border-t border-[#d5dfcf] pt-5 text-xs">
+          {t('footer.trademark', { year: new Date().getFullYear() })}
+        </p>
       </div>
     </footer>
-  );
+  )
 }

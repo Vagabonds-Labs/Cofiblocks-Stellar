@@ -68,6 +68,8 @@ export function CartDropdown({ textColor, progress, bottom }: CartDropdownProps)
     <div className="relative" ref={cartRef}>
       <button
         onClick={() => setShowCart(!showCart)}
+        aria-label={t('cart.title')}
+        aria-expanded={showCart}
         className="relative flex items-center justify-center w-10 h-10 rounded-xl hover:bg-[rgba(40,107,86,0.12)] transition-colors"
         style={{ color: textColor }}
       >

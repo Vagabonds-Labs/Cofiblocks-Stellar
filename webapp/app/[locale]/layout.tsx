@@ -2,15 +2,15 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { NextIntlClientProvider } from 'next-intl'
-import { getMessages, getLocale } from 'next-intl/server'
+import { getMessages, getLocale, getTranslations } from 'next-intl/server'
 
 import { AppProviders } from '@/lib/providers/AppProviders'
 import { Footer } from '@/components/footer/Footer'
 import { Header } from '@/components/header/Header'
 
-export const metadata: Metadata = {
-  title: 'CofiBlocks - OnChain Coffee Marketplace',
-  description: 'Discover and purchase premium coffee from Costa Rica using Stellar technology',
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('home')
+  return { title: t('meta_title'), description: t('meta_description') }
 }
 
 /**
@@ -20,7 +20,11 @@ export const metadata: Metadata = {
  * 3 a 7 segundos, bloqueando el render. La conexión de wallet no necesita nada
  * de eso: el Stellar Wallets Kit se inicializa en el cliente cuando hace falta.
  */
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const locale = await getLocale()
   const messages = await getMessages()
 
@@ -28,13 +32,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link
           href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="flex flex-col min-h-screen">
+      <body className="flex min-h-screen flex-col">
         <AppProviders>
           <NextIntlClientProvider messages={messages}>
             <Header />

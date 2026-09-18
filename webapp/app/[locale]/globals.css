@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --font-manrope: "Manrope";
+    --font-manrope: 'Manrope';
     --cb-bg-start: 246 244 240;
     --cb-bg-mid: 241 246 243;
     --cb-bg-end: 233 241 236;
@@ -30,9 +30,22 @@
   body {
     color: rgb(var(--cb-text));
     background:
-      radial-gradient(circle at 20% -10%, rgba(255, 255, 255, 0.65), transparent 40%),
-      radial-gradient(circle at 90% 0%, rgba(220, 236, 228, 0.55), transparent 38%),
-      linear-gradient(170deg, rgb(var(--cb-bg-start)) 0%, rgb(var(--cb-bg-mid)) 42%, rgb(var(--cb-bg-end)) 100%);
+      radial-gradient(
+        circle at 20% -10%,
+        rgba(255, 255, 255, 0.65),
+        transparent 40%
+      ),
+      radial-gradient(
+        circle at 90% 0%,
+        rgba(220, 236, 228, 0.55),
+        transparent 38%
+      ),
+      linear-gradient(
+        170deg,
+        rgb(var(--cb-bg-start)) 0%,
+        rgb(var(--cb-bg-mid)) 42%,
+        rgb(var(--cb-bg-end)) 100%
+      );
     min-height: 100vh;
     font-family: var(--font-manrope), sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -49,11 +62,11 @@
 
 @layer components {
   .app-container {
-    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
   }
 
   .surface-card {
-    @apply rounded-2xl border border-white/70 shadow-[0_10px_30px_rgba(22,40,30,0.07)] bg-white/85 backdrop-blur;
+    @apply rounded-2xl border border-white/70 bg-white/85 shadow-[0_10px_30px_rgba(22,40,30,0.07)] backdrop-blur;
   }
 
   .soft-card {
@@ -79,7 +92,11 @@
   }
 
   .btn-primary {
-    background: linear-gradient(145deg, rgb(var(--cb-primary)) 0%, rgb(var(--cb-primary-strong)) 100%);
+    background: linear-gradient(
+      145deg,
+      rgb(var(--cb-primary)) 0%,
+      rgb(var(--cb-primary-strong)) 100%
+    );
     color: white;
     @apply rounded-xl px-4 py-2.5 font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60;
   }
@@ -118,7 +135,7 @@
 }
 
 .menu-item {
-  @apply flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm rounded-lg
+  @apply flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm
          transition-all duration-200;
 }
 
@@ -153,4 +170,36 @@
 .profile-page :is(a, button, summary):focus-visible {
   outline: 3px solid #b88535;
   outline-offset: 4px;
+}
+
+/* Coffee storefront: warm surfaces and visible keyboard navigation. */
+.marketplace-page .field-input {
+  border-color: #deded3;
+  background: #fff;
+  border-radius: 0.65rem;
+}
+
+.marketplace-page :is(a, button, select):focus-visible,
+header :is(a, button, select):focus-visible,
+footer a:focus-visible {
+  outline: 3px solid #a47a35;
+  outline-offset: 4px;
+}
+
+.catalog-message {
+  border: 1px solid #e3dfd5;
+  border-radius: 1rem;
+  background: white;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: #304335;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .marketplace-page .animate-pulse {
+    animation: none;
+  }
 }

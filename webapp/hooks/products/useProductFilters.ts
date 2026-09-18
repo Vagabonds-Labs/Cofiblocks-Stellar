@@ -12,15 +12,12 @@ export function useProductFilters() {
     grindType: '',
   })
 
-  const updateFilter = useCallback(
-    (key: keyof FilterState, value: string) => {
-      setFilters((prev) => ({ ...prev, [key]: value }))
-    },
-    []
-  )
+  const updateFilter = useCallback((key: keyof FilterState, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }, [])
 
   const updateSearch = useCallback(
-    (value: string) => updateFilter("search", value),
+    (value: string) => updateFilter('search', value),
     [updateFilter]
   )
 
@@ -29,5 +26,14 @@ export function useProductFilters() {
     updateFilter,
     updateSearch,
     setFilters,
+    resetFilters: () =>
+      setFilters({
+        search: '',
+        region: '',
+        roastLevel: '',
+        minPrice: '',
+        maxPrice: '',
+        grindType: '',
+      }),
   }
 }

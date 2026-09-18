@@ -32,7 +32,15 @@ export function Header() {
   }
 
   const [selectedLanguage, setSelectedLanguage] = useState<string>(() => getInitialLanguage())
+  const [isScrolled, setIsScrolled] = useState(false)
   const { user } = useUser()
+
+  useEffect(() => {
+    const updateScrollState = () => setIsScrolled(window.scrollY > 24)
+    updateScrollState()
+    window.addEventListener('scroll', updateScrollState, { passive: true })
+    return () => window.removeEventListener('scroll', updateScrollState)
+  }, [])
   
   // Derive user info from context
   const userName = user?.name || ''
@@ -59,27 +67,25 @@ export function Header() {
 
   return (
     <header
-      className="
-        sticky top-0 z-50
-        backdrop-blur-xl bg-white/80
-        transition-all duration-200 
-        ease-[cubic-bezier(.4,0,.2,1)]
-        border-b border-white/70
-        shadow-[0_8px_30px_rgba(28,46,36,0.08)]
-      "
+      className={`sticky top-0 z-50 border-b backdrop-blur-xl
+        transition-[background-color,border-color,box-shadow] duration-300 motion-reduce:transition-none
+        ${isScrolled
+          ? 'border-[#d8cfbd] bg-[#eee8dc] shadow-[0_4px_18px_rgba(36,60,46,0.08)]'
+          : 'border-[#e7e4db] bg-white/80'
+        }`}
       style={{ color: textColor }}
     >
       <div className="app-container py-2">
         <div className="flex items-center justify-between h-16" style={{ color: textColor }}>
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
+          <Link href={`/${locale}`} className="flex items-center gap-2">
             <NextImage
               src="/images/logo.png"
               alt="CofiBlocks"
               width={40}
               height={64}
-              className="w-10 h-14"
+              className="w-10 h-auto"
               priority
             />
             <span className="hidden sm:inline text-sm font-semibold tracking-wide">COFIBLOCKS</span>
@@ -128,13 +134,13 @@ export function Header() {
             />
 
             {/* Notifications */}
-            <NotificationDropdown
+            {isLoggedIn && <NotificationDropdown
               isLoggedIn={isLoggedIn}
               selectedLanguage={selectedLanguage}
               textColor={textColor}
               progress={progress}
               bottom={bottom}
-            />
+            />}
 
             {/* User Menu */}
             <UserMenu

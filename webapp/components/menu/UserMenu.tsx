@@ -10,7 +10,6 @@ import {
   ListBulletIcon
 } from '@heroicons/react/24/outline'
 
-import NextImage from "next/image"
 import { useTranslations } from 'next-intl';
 
 import { UserMenuProps } from './types'
@@ -31,7 +30,6 @@ export function UserMenu({
 
   const {
     menuRef,
-    displayName,
     isMenuOpen,
     toggleMenu,
     go,
@@ -44,6 +42,8 @@ export function UserMenu({
       {/* Button */}
       <button
         onClick={toggleMenu}
+        aria-expanded={isLoggedIn ? isMenuOpen : undefined}
+        aria-label={isLoggedIn ? t('header.user_menu_alt') : t('header.login_alt')}
         className="
           flex flex-col items-center justify-center gap-0.5 px-2.5 py-1.5 rounded-xl
           transition-all duration-300
@@ -51,15 +51,8 @@ export function UserMenu({
         "
         style={{ color: textColor }}
       >
-        <NextImage
-          src="/images/circle-user-round.svg"
-          alt={isLoggedIn ? t('header.user_menu_alt') : t('header.login_alt')}
-          width={44}
-          height={44}
-          className="w-11 h-11 transition duration-500"
-          style={{ filter: 'invert(0)' }}
-        />
-        <span className="text-xs font-semibold">{displayName}</span>
+        <UserIcon className="h-6 w-6" aria-hidden="true" />
+        <span className="max-w-28 truncate text-xs font-semibold">{isLoggedIn ? userName || t('header.my_account') : t('header.login_alt')}</span>
       </button>
 
       {/* Dropdown */}

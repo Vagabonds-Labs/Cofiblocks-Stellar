@@ -1,6 +1,6 @@
 # Coffee marketplace home
 
-The public storefront now leads with coffee, origin, roast, and grind. Its copy and metadata are available in Spanish, English, and Portuguese, without cryptocurrency terminology. Account controls show the person's name or a translated account label instead of an address. Payment and authentication integrations are unchanged.
+The public storefront now leads with coffee, origin, roast, and grind. Its coffee-focused copy and metadata are available in Spanish, English, and Portuguese. A green announcement above the navigation explicitly identifies the current version as a CofiBlocks demo on Stellar Testnet, with the full version coming soon, in the selected language. Account controls show the person's name or a translated account label instead of an address. Payment and authentication integrations are unchanged.
 
 The catalogue keeps server-side search and filtering. Price sorting applies to the returned products. Filter options persist when results narrow; users can remove individual filters or clear all of them, including the search. Mobile filters collapse below 1024px. Product cards use real links, accessible quantity controls, stock limits, and a fallback for missing or broken images. Empty catalogues, empty searches, loading, and request failures have distinct states.
 

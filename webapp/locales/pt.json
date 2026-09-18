@@ -149,7 +149,9 @@
 		"language_selector": "Seletor de idioma",
 		"user_menu_alt": "Menu do usuário",
 		"login_alt": "Entrar",
-		"my_account": "Minha conta"
+		"my_account": "Minha conta",
+		"demo_notice": "Versão demo do CofiBlocks na Stellar Testnet.",
+		"full_version_soon": "A versão completa chega muito em breve."
 	},
 	"product": {
 		"button_add_to_cart": "Adicionar ao carrinho",

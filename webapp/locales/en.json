@@ -149,7 +149,9 @@
 		"language_selector": "Language selector",
 		"user_menu_alt": "User menu",
 		"login_alt": "Login",
-		"my_account": "My account"
+		"my_account": "My account",
+		"demo_notice": "CofiBlocks demo on Stellar Testnet.",
+		"full_version_soon": "The full version is coming very soon."
 	},
 	"product": {
 		"button_add_to_cart": "Add to Cart",

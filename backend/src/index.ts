@@ -13,6 +13,7 @@ import configRoute from './routes/config';
 import organizationsRoute from './routes/organizations';
 import integrationsRoute from "./routes/integrations";
 import walletRoute from "./routes/wallet";
+import batchesRoute from "./routes/batches";
 import { startTelegramBot } from './bot';
 import { errorHandlerMiddleware } from './middleware/errorHandler';
 import { requestId } from './middleware/requestId';
@@ -100,6 +101,7 @@ app.use("/api/config", configRoute);
 app.use("/api/organizations", organizationsRoute);
 app.use("/api/integrations", integrationsRoute);
 app.use("/api/wallet", walletRoute);
+app.use("/api/batches", batchesRoute);
 
 async function main() {
   // The bot webhook is registered before the error handler.

@@ -12,6 +12,9 @@ import {
 } from '@heroicons/react/24/outline'
 import { useLocale, useMessages, useTranslations } from 'next-intl'
 import Link from 'next/link'
+import { useState } from 'react'
+
+import { BatchesSection, PendingDeliveries, PilotSummary } from '@/components/batches'
 
 import { ExplorerLink } from '@/components/trace'
 import { WalletCard } from '@/components/wallet'
@@ -117,6 +120,10 @@ function StaffHome({ user }: { user: User }) {
   const locale = useLocale()
   const messages = useMessages() as unknown as { tasks: Record<string, Task[]> }
   const tasks = user.role ? messages.tasks[user.role] ?? [] : []
+  // Bumped after a reception so every list on the page reloads.
+  const [refreshKey, setRefreshKey] = useState(0)
+  // Coop staff start filtered to their cooperative; the union and admins see all.
+  const ownCoopId = user.role && user.role !== 'EXPORT_MANAGER' ? user.organizationId : null
 
   return (
     <main className="app-page app-container space-y-6 py-8 sm:py-12">
@@ -129,6 +136,15 @@ function StaffHome({ user }: { user: User }) {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
+          {user.role === 'COLLECTOR' && (
+            <PendingDeliveries
+              key={user.id}
+              collectionCenterId={user.collectionCenterId ?? null}
+              refreshKey={refreshKey}
+              onRecorded={() => setRefreshKey((k) => k + 1)}
+            />
+          )}
+
           {user.role ? (
             <section className="surface-card p-5 sm:p-6" aria-labelledby="role-title">
               <p className="text-sm text-[#5a6760]">{t('home.role_label')}</p>
@@ -219,6 +235,10 @@ function StaffHome({ user }: { user: User }) {
           </aside>
         )}
       </div>
+
+      <PilotSummary refreshKey={refreshKey} />
+      {/* Keyed by user: the coop filter starts from the user's cooperative. */}
+      <BatchesSection key={user.id} refreshKey={refreshKey} defaultCoopId={ownCoopId} />
     </main>
   )
 }

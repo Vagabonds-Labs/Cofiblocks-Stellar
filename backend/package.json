@@ -16,6 +16,7 @@
     "postinstall": "prisma generate",
     "admin:grant": "tsx scripts/grant-admin.ts",
     "chain:sync-roles": "tsx scripts/sync-roles.ts",
+    "farmers:import": "tsx scripts/import-farmers.ts",
     "voiceledger:send": "tsx scripts/voiceledger-send.ts",
     "voiceledger:demo": "tsx scripts/voiceledger-demo.ts",
     "sow:evidence": "tsx scripts/sow-evidence.ts",

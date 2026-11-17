@@ -205,62 +205,46 @@
   "tasks": {
     "COLLECTOR": [
       {
-        "title": "ርክክብ ይመዝግቡ",
-        "text": "የሎት ቁጥር፣ ክብደት፣ የብስለት ደረጃ ከፎቶ ጋር እና የክፍያ ደረሰኝ።",
-        "week": 3
-      },
-      {
-        "title": "የማዕከሌ ሎቶች",
-        "text": "በመሰብሰቢያ ማዕከልዎ የተቀበሉት ሁሉ።",
+        "title": "የሎት ሰነዶች",
+        "text": "ለሎት ሰነዶችን አያይዝ።",
         "week": 3
       }
     ],
-    "COMMITTEE_MEMBER": [
-      {
-        "title": "የዕለቱ ዋጋ",
-        "text": "ለማኅበርዎ የቀይ እሸት ቡና በኪሎ ዋጋን ያሳውቁ።",
-        "week": 3
-      },
-      {
-        "title": "የማኅበሩ ሎቶች",
-        "text": "የሚገቡ ሎቶችንና ደረጃቸውን ይከታተሉ።",
-        "week": 3
-      }
-    ],
+    "COMMITTEE_MEMBER": [],
     "INDUSTRY_MANAGER": [
       {
         "title": "ማጠብና ማብላላት",
-        "text": "የማብላላት ጊዜና የማሽኖች ንጽሕና።",
+        "text": "ሎቶችን ወደ ማጠብና ማብላላት አሳልፍ።",
         "week": 3
       },
       {
         "title": "ማድረቅ",
-        "text": "የአፍሪካ አልጋዎች፣ የእርጥበት ቁጥጥርና የአልጋ መለያ።",
+        "text": "ማድረቅን መዝግብ።",
         "week": 3
       }
     ],
     "STORE_KEEPER": [
       {
-        "title": "ማከማቸት",
-        "text": "የቢን ካርዶችና ንጹሕ የጆንያ ከረጢቶች።",
+        "title": "መጋዘን",
+        "text": "መጋዘንን መዝግብ።",
         "week": 3
       },
       {
         "title": "ወደ ዩኒየኑ ማጓጓዝ",
-        "text": "ወደ ዩኒየኑ የሚሄዱትን ሎቶች ምልክት ያድርጉ።",
+        "text": "ሎቶችን ወደ ዩኒየኑ ላክ።",
         "week": 3
       }
     ],
     "EXPORT_MANAGER": [
       {
-        "title": "ጥራትና ኤክስፖርት",
-        "text": "ደረጃዎች፣ የኤክስፖርት ከረጢት እና ሽያጭ።",
-        "week": 4
+        "title": "ማዘጋጀትና መሸጥ",
+        "text": "ሎቶችን ተዘጋጅተዋል እና ተሽጠዋል ብለህ ምልክት አድርግ።",
+        "week": 3
       },
       {
-        "title": "የEUDR ሪፖርቶች",
-        "text": "ስም-አልባ የመጠንና የማሳ ሪፖርቶች።",
-        "week": 4
+        "title": "CSV ማውረድ",
+        "text": "ሎቶችን ከታሪካቸው ጋር አውርድ።",
+        "week": 3
       }
     ]
   },
@@ -349,5 +333,104 @@
     "balance": "ቀሪ ሂሳብ፦",
     "view_account": "በStellar Expert ላይ ይመልከቱ",
     "view_funding": "የገንዘብ ማስተላለፊያ ግብይቱን ይመልከቱ"
+  },
+  "stages": {
+    "DELIVERED": "ደርሷል",
+    "RECEIVED": "ተቀብሏል",
+    "WASHING": "በማጠብ ላይ",
+    "FERMENTATION": "በማብላላት ላይ",
+    "DRYING": "በማድረቅ ላይ",
+    "STORAGE": "በመጋዘን",
+    "IN_TRANSPORT_TO_UNION": "ወደ ዩኒየኑ በመጓጓዝ ላይ",
+    "PREPARED_WITH_EXPORTABLE_BAG": "በኤክስፖርት ጆንያ ተዘጋጅቷል",
+    "SOLD": "ተሽጧል"
+  },
+  "batches": {
+    "title": "ሎቶች",
+    "subtitle": "አርሶ አደሮች ያስመዘገቧቸው ርክክቦችና ከዚያ በኋላ ያለው እያንዳንዱ ደረጃ፣ ሁሉም በStellar ላይ።",
+    "search": "ሎት ወይም የአርሶ አደር መለያ ፈልግ",
+    "filter_stage": "በደረጃ አጣራ",
+    "all": "ሁሉም · {count}",
+    "stage_count": "{stage} · {count}",
+    "empty": "እስካሁን ሎት የለም። አርሶ አደሮች በቦቱ ርክክብ ሲያስመዘግቡ እዚህ ይታያሉ።",
+    "empty_filtered": "ከእነዚህ ማጣሪያዎች ጋር የሚዛመድ ሎት የለም።",
+    "col_batch": "ሎት",
+    "col_coop": "ማህበር",
+    "col_center": "ማዕከል",
+    "col_stage": "ደረጃ",
+    "col_kg": "ኪ.ግ",
+    "col_onchain": "በStellar",
+    "estimated_hint": "የአርሶ አደሩ ግምት፤ ገና አልተመዘነም",
+    "tx_delivery": "ርክክብ",
+    "tx_reception": "ክብደት",
+    "showing": "ከ{total} ውስጥ የመጨረሻዎቹ {shown} እየታዩ ነው",
+    "stage_short": {
+      "DELIVERED": "ደርሷል",
+      "RECEIVED": "ተቀብሏል",
+      "WASHING": "ማጠብ",
+      "FERMENTATION": "ማብላላት",
+      "DRYING": "ማድረቅ",
+      "STORAGE": "መጋዘን",
+      "IN_TRANSPORT_TO_UNION": "በጉዞ ላይ",
+      "PREPARED_WITH_EXPORTABLE_BAG": "ተዘጋጅቷል",
+      "SOLD": "ተሽጧል"
+    },
+    "filter_coop": "ማህበር",
+    "all_coops": "ሁሉም ማህበራት"
+  },
+  "pending": {
+    "title": "የሚመዘኑ ርክክቦች",
+    "subtitle": "አርሶ አደሮች እነዚህን ርክክቦች በማዕከልዎ በቦቱ አስመዝግበዋል። ይመዝኗቸውና ደረሰኙን ፎቶ ያንሱ።",
+    "count": "{count} በመጠባበቅ ላይ",
+    "empty": "አሁን የሚመዘን ነገር የለም።",
+    "delivered": "{time} በ{center} ደርሷል",
+    "estimated": "ወደ {kg} ኪ.ግ",
+    "weigh": "ክብደት መዝግብ"
+  },
+  "reception": {
+    "title": "ክብደትና ደረሰኝ መዝግብ",
+    "close": "ዝጋ",
+    "farmer": "አርሶ አደር",
+    "estimated": "የአርሶ አደሩ ግምት",
+    "weight_label": "በሚዛኑ ላይ ያለው ክብደት",
+    "photo_label": "የደረሰኝ ፎቶ",
+    "photo_choose": "ፎቶ አንሳ ወይም ምረጥ",
+    "photo_hint": "ወደ Stellar የሚሄደው አሻራው (hash) ብቻ ነው።",
+    "notes_label": "ማስታወሻ (አማራጭ)",
+    "immutable_hint": "ክብደትና ደረሰኝ አንድ ጊዜ ብቻ ይመዘገባሉ፤ በኋላ መቀየር አይቻልም።",
+    "submit": "ፈርም እና መዝግብ",
+    "step_hashing": "ፎቶውን በማንበብ ላይ…",
+    "step_preparing": "በማዘጋጀት ላይ…",
+    "step_signing": "በዋሌትዎ ያረጋግጡ…",
+    "step_sending": "በStellar ላይ በመመዝገብ ላይ…",
+    "done": "{kg} ኪ.ግ ተመዝግቧል",
+    "done_text": "ሎቱ አሁን ተቀብሏል። አርሶ አደሩ ይነገረዋል።",
+    "view_tx": "ግብይቱን በStellar ላይ ይመልከቱ",
+    "error_generic": "ችግር ተፈጥሯል። እንደገና ይሞክሩ።",
+    "error_cancelled": "ፊርማውን ሰርዘዋል። ምንም አልተመዘገበም።"
+  },
+  "summary": {
+    "title": "ፓይለቱ በአንድ እይታ",
+    "subtitle": "በሶስቱ ማህበራት ውስጥ እየሆነ ያለው። አርሶ አደሮች የሚታዩት በማህበራቸው መለያ ብቻ ነው፤ እያንዳንዱ ደረጃ በStellar ላይ ነው።",
+    "tile_batches": "ሎቶች",
+    "tile_batches_hint": "{count} ለመመዘን በመጠባበቅ ላይ",
+    "tile_kg": "የተቀበሉ ኪ.ግ",
+    "tile_kg_hint": "በሰብሳቢዎች የተመዘኑ",
+    "tile_farmers": "የተገናኙ አርሶ አደሮች",
+    "tile_farmers_hint": "በማህበራቱ ዝርዝር ውስጥ ካሉ {total}",
+    "tile_consent": "የEUDR ስምምነት ያላቸው",
+    "tile_consent_hint": "በStellar ላይ ተመዝግቧል",
+    "by_coop": "በማህበር",
+    "col_coop": "ማህበር",
+    "col_farmers": "አርሶ አደሮች",
+    "col_batches": "ሎቶች",
+    "col_kg": "ኪ.ግ",
+    "recent_title": "በStellar ላይ የቅርብ ጊዜ",
+    "recent_empty": "እስካሁን ምንም አልተመዘገበም።",
+    "event_delivered_kg": "{farmer} በ{center} ወደ {kg} ኪ.ግ አስረክቧል",
+    "event_delivered": "{farmer} በ{center} ቡና አስረክቧል",
+    "event_received": "በ{center} {kg} ኪ.ግ ተመዝኗል",
+    "event_stage": "{batch} ወደ አዲስ ደረጃ ተሸጋግሯል",
+    "view_tx": "ግብይት"
   }
 }

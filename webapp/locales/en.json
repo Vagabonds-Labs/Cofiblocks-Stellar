@@ -205,62 +205,46 @@
   "tasks": {
     "COLLECTOR": [
       {
-        "title": "Register a delivery",
-        "text": "Batch number, weight, ripeness with photo and payment receipt.",
-        "week": 3
-      },
-      {
-        "title": "Batches of my center",
-        "text": "Everything received at your collection center.",
+        "title": "Batch documents",
+        "text": "Attach documents to a batch.",
         "week": 3
       }
     ],
-    "COMMITTEE_MEMBER": [
-      {
-        "title": "Daily price",
-        "text": "Publish the price per kilo of red cherry for your cooperative.",
-        "week": 3
-      },
-      {
-        "title": "Cooperative batches",
-        "text": "Track incoming batches and their stage.",
-        "week": 3
-      }
-    ],
+    "COMMITTEE_MEMBER": [],
     "INDUSTRY_MANAGER": [
       {
         "title": "Washing and fermentation",
-        "text": "Fermentation times and machinery hygiene.",
+        "text": "Move batches to washing and fermentation.",
         "week": 3
       },
       {
         "title": "Drying",
-        "text": "African beds, moisture control and table tagging.",
+        "text": "Record drying.",
         "week": 3
       }
     ],
     "STORE_KEEPER": [
       {
         "title": "Storage",
-        "text": "Bin cards and clean jute bags.",
+        "text": "Record storage.",
         "week": 3
       },
       {
         "title": "Transport to the union",
-        "text": "Mark the batches that leave for the union.",
+        "text": "Dispatch batches to the union.",
         "week": 3
       }
     ],
     "EXPORT_MANAGER": [
       {
-        "title": "Quality and export",
-        "text": "Grades, exportable bag and sale.",
-        "week": 4
+        "title": "Prepare and sell",
+        "text": "Mark batches prepared with exportable bag and sold.",
+        "week": 3
       },
       {
-        "title": "EUDR reports",
-        "text": "Anonymized volume and plot reports.",
-        "week": 4
+        "title": "CSV export",
+        "text": "Download batches with their history.",
+        "week": 3
       }
     ]
   },
@@ -349,5 +333,104 @@
     "balance": "Balance:",
     "view_account": "View on Stellar Expert",
     "view_funding": "View funding transaction"
+  },
+  "stages": {
+    "DELIVERED": "Delivered",
+    "RECEIVED": "Received",
+    "WASHING": "Washing",
+    "FERMENTATION": "Fermentation",
+    "DRYING": "Drying",
+    "STORAGE": "Storage",
+    "IN_TRANSPORT_TO_UNION": "In transport to the union",
+    "PREPARED_WITH_EXPORTABLE_BAG": "Prepared with exportable bag",
+    "SOLD": "Sold"
+  },
+  "batches": {
+    "title": "Batches",
+    "subtitle": "Deliveries recorded by farmers and every step after them, each one on Stellar.",
+    "search": "Search batch or farmer ID",
+    "filter_stage": "Filter by stage",
+    "all": "All · {count}",
+    "stage_count": "{stage} · {count}",
+    "empty": "No batches yet. They appear here when farmers record deliveries through the bot.",
+    "empty_filtered": "No batches match these filters.",
+    "col_batch": "Batch",
+    "col_coop": "Coop",
+    "col_center": "Center",
+    "col_stage": "Stage",
+    "col_kg": "kg",
+    "col_onchain": "On Stellar",
+    "estimated_hint": "Farmer's estimate; not weighed yet",
+    "tx_delivery": "Delivery",
+    "tx_reception": "Weight",
+    "showing": "Showing the latest {shown} of {total}",
+    "stage_short": {
+      "DELIVERED": "Delivered",
+      "RECEIVED": "Received",
+      "WASHING": "Washing",
+      "FERMENTATION": "Fermentation",
+      "DRYING": "Drying",
+      "STORAGE": "Storage",
+      "IN_TRANSPORT_TO_UNION": "In transport",
+      "PREPARED_WITH_EXPORTABLE_BAG": "Prepared",
+      "SOLD": "Sold"
+    },
+    "filter_coop": "Cooperative",
+    "all_coops": "All cooperatives"
+  },
+  "pending": {
+    "title": "Deliveries to weigh",
+    "subtitle": "Farmers recorded these deliveries at your center through the bot. Weigh them and photograph the receipt.",
+    "count": "{count} pending",
+    "empty": "Nothing to weigh right now.",
+    "delivered": "Delivered {time} at {center}",
+    "estimated": "about {kg} kg",
+    "weigh": "Record weight"
+  },
+  "reception": {
+    "title": "Record weight and receipt",
+    "close": "Close",
+    "farmer": "Farmer",
+    "estimated": "Farmer's estimate",
+    "weight_label": "Weight on the scale",
+    "photo_label": "Receipt photo",
+    "photo_choose": "Take or choose a photo",
+    "photo_hint": "Only its fingerprint (hash) goes on Stellar.",
+    "notes_label": "Notes (optional)",
+    "immutable_hint": "Weight and receipt can be recorded only once and cannot be changed afterwards.",
+    "submit": "Sign and record",
+    "step_hashing": "Reading the photo…",
+    "step_preparing": "Preparing…",
+    "step_signing": "Confirm in your wallet…",
+    "step_sending": "Recording on Stellar…",
+    "done": "{kg} kg recorded",
+    "done_text": "The batch is now Received. The farmer will be notified.",
+    "view_tx": "See the transaction on Stellar",
+    "error_generic": "Something went wrong. Try again.",
+    "error_cancelled": "You cancelled the signature. Nothing was recorded."
+  },
+  "summary": {
+    "title": "The pilot at a glance",
+    "subtitle": "What is happening across the three cooperatives. Farmers appear only by their cooperative ID; every step is on Stellar.",
+    "tile_batches": "Batches",
+    "tile_batches_hint": "{count} waiting to be weighed",
+    "tile_kg": "kg received",
+    "tile_kg_hint": "Weighed by the collectors",
+    "tile_farmers": "Farmers linked",
+    "tile_farmers_hint": "of {total} on the cooperatives' lists",
+    "tile_consent": "With EUDR consent",
+    "tile_consent_hint": "Recorded on Stellar",
+    "by_coop": "By cooperative",
+    "col_coop": "Cooperative",
+    "col_farmers": "Farmers",
+    "col_batches": "Batches",
+    "col_kg": "kg",
+    "recent_title": "Latest on Stellar",
+    "recent_empty": "Nothing recorded yet.",
+    "event_delivered_kg": "{farmer} delivered about {kg} kg at {center}",
+    "event_delivered": "{farmer} delivered coffee at {center}",
+    "event_received": "{kg} kg weighed at {center}",
+    "event_stage": "{batch} moved to a new stage",
+    "view_tx": "Transaction"
   }
 }

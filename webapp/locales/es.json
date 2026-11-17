@@ -205,62 +205,46 @@
   "tasks": {
     "COLLECTOR": [
       {
-        "title": "Registrar una entrega",
-        "text": "Número de lote, peso, madurez con foto y recibo de pago.",
-        "week": 3
-      },
-      {
-        "title": "Lotes de mi centro",
-        "text": "Todo lo recibido en tu centro de acopio.",
+        "title": "Documentos del lote",
+        "text": "Adjuntar documentos a un lote.",
         "week": 3
       }
     ],
-    "COMMITTEE_MEMBER": [
-      {
-        "title": "Precio diario",
-        "text": "Publica el precio por kilo de cereza de tu cooperativa.",
-        "week": 3
-      },
-      {
-        "title": "Lotes de la cooperativa",
-        "text": "Sigue los lotes que entran y su etapa.",
-        "week": 3
-      }
-    ],
+    "COMMITTEE_MEMBER": [],
     "INDUSTRY_MANAGER": [
       {
         "title": "Lavado y fermentación",
-        "text": "Tiempos de fermentación e higiene de la maquinaria.",
+        "text": "Pasar lotes a lavado y fermentación.",
         "week": 3
       },
       {
         "title": "Secado",
-        "text": "Camas africanas, control de humedad y etiquetado de mesas.",
+        "text": "Registrar el secado.",
         "week": 3
       }
     ],
     "STORE_KEEPER": [
       {
         "title": "Almacenamiento",
-        "text": "Bin cards y sacos de yute limpios.",
+        "text": "Registrar el almacenamiento.",
         "week": 3
       },
       {
         "title": "Transporte a la unión",
-        "text": "Marca los lotes que salen hacia la unión.",
+        "text": "Despachar lotes a la unión.",
         "week": 3
       }
     ],
     "EXPORT_MANAGER": [
       {
-        "title": "Calidad y exportación",
-        "text": "Calificaciones, saco exportable y venta.",
-        "week": 4
+        "title": "Preparar y vender",
+        "text": "Marcar lotes preparados con saco de exportación y vendidos.",
+        "week": 3
       },
       {
-        "title": "Reportes EUDR",
-        "text": "Reportes anonimizados de volumen y parcelas.",
-        "week": 4
+        "title": "Exportar CSV",
+        "text": "Descargar los lotes con su historial.",
+        "week": 3
       }
     ]
   },
@@ -349,5 +333,104 @@
     "balance": "Saldo:",
     "view_account": "Ver en Stellar Expert",
     "view_funding": "Ver la transacción de fondeo"
+  },
+  "stages": {
+    "DELIVERED": "Entregado",
+    "RECEIVED": "Recibido",
+    "WASHING": "Lavado",
+    "FERMENTATION": "Fermentación",
+    "DRYING": "Secado",
+    "STORAGE": "Almacenamiento",
+    "IN_TRANSPORT_TO_UNION": "En transporte a la unión",
+    "PREPARED_WITH_EXPORTABLE_BAG": "Preparado con saco de exportación",
+    "SOLD": "Vendido"
+  },
+  "batches": {
+    "title": "Lotes",
+    "subtitle": "Entregas registradas por los caficultores y cada paso posterior, cada uno en Stellar.",
+    "search": "Buscar lote o ID de caficultor",
+    "filter_stage": "Filtrar por etapa",
+    "all": "Todos · {count}",
+    "stage_count": "{stage} · {count}",
+    "empty": "Todavía no hay lotes. Aparecen aquí cuando los caficultores registran entregas por el bot.",
+    "empty_filtered": "Ningún lote coincide con estos filtros.",
+    "col_batch": "Lote",
+    "col_coop": "Coop",
+    "col_center": "Centro",
+    "col_stage": "Etapa",
+    "col_kg": "kg",
+    "col_onchain": "En Stellar",
+    "estimated_hint": "Estimado del caficultor; todavía sin pesar",
+    "tx_delivery": "Entrega",
+    "tx_reception": "Peso",
+    "showing": "Mostrando los últimos {shown} de {total}",
+    "stage_short": {
+      "DELIVERED": "Entregado",
+      "RECEIVED": "Recibido",
+      "WASHING": "Lavado",
+      "FERMENTATION": "Fermentación",
+      "DRYING": "Secado",
+      "STORAGE": "Almacenado",
+      "IN_TRANSPORT_TO_UNION": "En transporte",
+      "PREPARED_WITH_EXPORTABLE_BAG": "Preparado",
+      "SOLD": "Vendido"
+    },
+    "filter_coop": "Cooperativa",
+    "all_coops": "Todas las cooperativas"
+  },
+  "pending": {
+    "title": "Entregas por pesar",
+    "subtitle": "Los caficultores registraron estas entregas en tu centro desde el bot. Pésalas y fotografía el recibo.",
+    "count": "{count} pendientes",
+    "empty": "No hay nada por pesar ahora.",
+    "delivered": "Entregado {time} en {center}",
+    "estimated": "unos {kg} kg",
+    "weigh": "Registrar peso"
+  },
+  "reception": {
+    "title": "Registrar peso y recibo",
+    "close": "Cerrar",
+    "farmer": "Caficultor",
+    "estimated": "Estimado del caficultor",
+    "weight_label": "Peso en la balanza",
+    "photo_label": "Foto del recibo",
+    "photo_choose": "Tomar o elegir una foto",
+    "photo_hint": "Solo su huella (hash) va a Stellar.",
+    "notes_label": "Notas (opcional)",
+    "immutable_hint": "El peso y el recibo se registran una sola vez y no se pueden cambiar después.",
+    "submit": "Firmar y registrar",
+    "step_hashing": "Leyendo la foto…",
+    "step_preparing": "Preparando…",
+    "step_signing": "Confirma en tu wallet…",
+    "step_sending": "Registrando en Stellar…",
+    "done": "{kg} kg registrados",
+    "done_text": "El lote quedó Recibido. Se le avisará al caficultor.",
+    "view_tx": "Ver la transacción en Stellar",
+    "error_generic": "Algo salió mal. Inténtalo de nuevo.",
+    "error_cancelled": "Cancelaste la firma. No se registró nada."
+  },
+  "summary": {
+    "title": "El piloto de un vistazo",
+    "subtitle": "Lo que está pasando en las tres cooperativas. Los caficultores aparecen solo por su ID de la cooperativa; cada paso está en Stellar.",
+    "tile_batches": "Lotes",
+    "tile_batches_hint": "{count} esperando pesaje",
+    "tile_kg": "kg recibidos",
+    "tile_kg_hint": "Pesados por los collectors",
+    "tile_farmers": "Caficultores vinculados",
+    "tile_farmers_hint": "de {total} en las listas de las cooperativas",
+    "tile_consent": "Con consentimiento EUDR",
+    "tile_consent_hint": "Registrado en Stellar",
+    "by_coop": "Por cooperativa",
+    "col_coop": "Cooperativa",
+    "col_farmers": "Caficultores",
+    "col_batches": "Lotes",
+    "col_kg": "kg",
+    "recent_title": "Lo último en Stellar",
+    "recent_empty": "Todavía no hay nada registrado.",
+    "event_delivered_kg": "{farmer} entregó unos {kg} kg en {center}",
+    "event_delivered": "{farmer} entregó café en {center}",
+    "event_received": "Se pesaron {kg} kg en {center}",
+    "event_stage": "{batch} pasó a una nueva etapa",
+    "view_tx": "Transacción"
   }
 }

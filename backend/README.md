@@ -134,6 +134,11 @@ All under `/api`.
 | `POST /notifications` | admin | Creates a notification. |
 | `GET /wallet` | session | The user's Stellar account: whether it exists, XLM balance and funding transaction. |
 | `POST /wallet/fund` | session | Sends testnet XLM to the user's account, once. The account must exist (`409 ACCOUNT_NOT_DEPLOYED`). |
+| `GET /batches` | session | Every batch (pseudonymous data, already public on Stellar), newest first, with counts per stage. Filters: `stage`, `collection_center_id`, `organization_id`, `search`. |
+| `GET /batches/summary` | session | The pilot at a glance: farmers linked, batches per stage, kg received, per cooperative, and the latest on-chain steps. |
+| `GET /batches/:id` | session | A batch with its history; each step says whether its stored record still matches the hash on chain. |
+| `POST /batches/:id/reception/prepare` | Collector | Step 1 of weight and receipt: returns the `record_reception` transaction to sign. Body: `weight_kg`, `receipt_sha256`, `notes`. |
+| `POST /batches/:id/reception` | Collector | Step 2: the same body plus `signed_xdr`. Checks it is exactly the prepared call, sends it with fee-bump and moves the batch to `RECEIVED`. |
 | `POST /integrations/voiceledger/events` | VoiceLedger (HMAC) | One event from the farmers' bot. |
 | `GET /integrations/voiceledger/events/:eventId` | VoiceLedger (HMAC) | Status of an event. |
 | `GET /config/stellar` | anyone | Network, passphrase, contract address and faucet address. |

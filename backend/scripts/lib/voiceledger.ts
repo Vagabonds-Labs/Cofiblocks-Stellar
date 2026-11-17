@@ -3,7 +3,7 @@
  * bot calls it. Shared by the simulator scripts.
  */
 import 'dotenv/config';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 
 import { signVoiceLedgerPayload } from '@/middleware/voiceLedgerSignature';
 
@@ -44,9 +44,17 @@ export async function sendOk(type: string, data: Record<string, unknown>, eventI
   return { eventId: response.eventId, result: response.body.result! };
 }
 
+/** A fake Telegram user ID derived from the farmer, in a range real accounts do not use yet. */
+export function simulatedTelegramId(coopCode: string, farmerId: string): string {
+  const digest = createHash('sha256').update(`${coopCode.toUpperCase()}-${farmerId.toUpperCase()}`).digest();
+  return String(9_000_000_000_000n + (digest.readBigUInt64BE(0) % 999_999_999_999n));
+}
+
 /** The farmer's journey up to a delivery. Returns each step's result. */
 export async function farmerJourney(opts: { coopCode: string; farmerId: string; center: string; kg: number; telegram?: string }) {
-  const telegram = opts.telegram ?? String(900_000_000 + Math.floor(Math.random() * 99_999_999));
+  // The same simulated Telegram account for the same farmer on every run, so
+  // the journey can be repeated: linking again answers `already_linked`.
+  const telegram = opts.telegram ?? simulatedTelegramId(opts.coopCode, opts.farmerId);
   const linked = await sendOk('farmer.linked', {
     coop_code: opts.coopCode,
     farmer_id: opts.farmerId,

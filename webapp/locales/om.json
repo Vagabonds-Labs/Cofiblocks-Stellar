@@ -205,62 +205,46 @@
   "tasks": {
     "COLLECTOR": [
       {
-        "title": "Galtee galmeessi",
-        "text": "Lakkoofsa baachii, ulfaatina, bilchina suuraa wajjin fi nagahee kaffaltii.",
-        "week": 3
-      },
-      {
-        "title": "Baachiiwwan giddu-gala koo",
-        "text": "Wanta giddu-gala walitti qabaa keessanitti galee hunda.",
+        "title": "Galmeewwan bachii",
+        "text": "Galmeewwan bachiitti maxxansi.",
         "week": 3
       }
     ],
-    "COMMITTEE_MEMBER": [
-      {
-        "title": "Gatii guyyaa",
-        "text": "Gatii kiiloo buna diimaa waldaa hojii gamtaa keessaniif maxxansaa.",
-        "week": 3
-      },
-      {
-        "title": "Baachiiwwan waldaa hojii gamtaa",
-        "text": "Baachiiwwan galaa jiranii fi sadarkaa isaanii hordofaa.",
-        "week": 3
-      }
-    ],
+    "COMMITTEE_MEMBER": [],
     "INDUSTRY_MANAGER": [
       {
-        "title": "Miiccuu fi fermenteeshinii",
-        "text": "Yeroo fermenteeshinii fi qulqullina maashinii.",
+        "title": "Miciramaa fi bulbulaa",
+        "text": "Bachiiwwan gara miciramaa fi bulbulaatti dabarsi.",
         "week": 3
       },
       {
         "title": "Gogsuu",
-        "text": "Siree Afrikaa, to'annoo jiidhinaa fi mallattoo sireewwanii.",
+        "text": "Gogsuu galmeessi.",
         "week": 3
       }
     ],
     "STORE_KEEPER": [
       {
         "title": "Kuusaa",
-        "text": "Kaardii biinii fi korojoo jirbii qulqulluu.",
+        "text": "Kuusaa galmeessi.",
         "week": 3
       },
       {
-        "title": "Gara yuuniyeeniitti geejjibuu",
-        "text": "Baachiiwwan gara yuuniyeeniitti ba'an mallatteessaa.",
+        "title": "Geejjiba gara Waldaa Gamtaatti",
+        "text": "Bachiiwwan gara Waldaa Gamtaatti ergi.",
         "week": 3
       }
     ],
     "EXPORT_MANAGER": [
       {
-        "title": "Qulqullinaa fi alergii",
-        "text": "Sadarkaa, korojoo alergii fi gurgurtaa.",
-        "week": 4
+        "title": "Qopheessuu fi gurguruu",
+        "text": "Bachiiwwan qophaa'an fi gurguraman mallatteessi.",
+        "week": 3
       },
       {
-        "title": "Gabaasa EUDR",
-        "text": "Gabaasa hamma oomishaa fi lafa qonnaa maqaa hin agarsiifne.",
-        "week": 4
+        "title": "CSV baasi",
+        "text": "Bachiiwwan seenaa isaanii wajjin buusi.",
+        "week": 3
       }
     ]
   },
@@ -349,5 +333,104 @@
     "balance": "Haftee:",
     "view_account": "Stellar Expert irratti ilaali",
     "view_funding": "Taransaakshinii maallaqa itti galchuu ilaali"
+  },
+  "stages": {
+    "DELIVERED": "Galfame",
+    "RECEIVED": "Fudhatame",
+    "WASHING": "Miciramaa",
+    "FERMENTATION": "Bulbulaa",
+    "DRYING": "Gogsuu",
+    "STORAGE": "Kuusaa",
+    "IN_TRANSPORT_TO_UNION": "Gara Waldaa Gamtaatti geejjibamaa jira",
+    "PREPARED_WITH_EXPORTABLE_BAG": "Qorqoorroo alergii keessatti qophaa'e",
+    "SOLD": "Gurgurame"
+  },
+  "batches": {
+    "title": "Bachiiwwan",
+    "subtitle": "Galfamni qonnaan bultootaan galmeeffame fi tarkaanfii itti aanu hundi, tokkoon tokkoon isaanii Stellar irratti.",
+    "search": "Bachii ykn ID qonnaan bulaa barbaadi",
+    "filter_stage": "Sadarkaan calali",
+    "all": "Hunda · {count}",
+    "stage_count": "{stage} · {count}",
+    "empty": "Ammatti bachiin hin jiru. Yeroo qonnaan bultoonni bot irratti galfama galmeessan asitti mul'atu.",
+    "empty_filtered": "Bachiin calaltuu kana wajjin walsimu hin jiru.",
+    "col_batch": "Bachii",
+    "col_coop": "Waldaa",
+    "col_center": "Buufata",
+    "col_stage": "Sadarkaa",
+    "col_kg": "kg",
+    "col_onchain": "Stellar irratti",
+    "estimated_hint": "Tilmaama qonnaan bulaa; ammallee hin madaalamne",
+    "tx_delivery": "Galfama",
+    "tx_reception": "Ulfaatina",
+    "showing": "Isaan dhumaa {shown} {total} keessaa agarsiisaa jira",
+    "stage_short": {
+      "DELIVERED": "Galfame",
+      "RECEIVED": "Fudhatame",
+      "WASHING": "Miciramaa",
+      "FERMENTATION": "Bulbulaa",
+      "DRYING": "Gogsuu",
+      "STORAGE": "Kuufame",
+      "IN_TRANSPORT_TO_UNION": "Geejjiba irra",
+      "PREPARED_WITH_EXPORTABLE_BAG": "Qophaa'e",
+      "SOLD": "Gurgurame"
+    },
+    "filter_coop": "Waldaa",
+    "all_coops": "Waldaalee hunda"
+  },
+  "pending": {
+    "title": "Galfamoota madaalamuu qaban",
+    "subtitle": "Qonnaan bultoonni galfamoota kana buufata keessan irratti bot dhaan galmeessan. Madaalaa, ragaa kaffaltii suuraa kaasaa.",
+    "count": "{count} eegaa jiru",
+    "empty": "Amma wanti madaalamu hin jiru.",
+    "delivered": "{time} {center} irratti galfame",
+    "estimated": "gara {kg} kg",
+    "weigh": "Ulfaatina galmeessi"
+  },
+  "reception": {
+    "title": "Ulfaatina fi ragaa galmeessi",
+    "close": "Cufi",
+    "farmer": "Qonnaan bulaa",
+    "estimated": "Tilmaama qonnaan bulaa",
+    "weight_label": "Ulfaatina madaalii irratti",
+    "photo_label": "Suuraa ragaa",
+    "photo_choose": "Suuraa kaasi ykn filadhu",
+    "photo_hint": "Mallattoon (hash) isaa qofti Stellar irra deema.",
+    "notes_label": "Yaadannoo (filannoo)",
+    "immutable_hint": "Ulfaatinni fi ragaan al tokko qofa galmeeffamu, booda jijjiiramuu hin danda'an.",
+    "submit": "Mallatteessi fi galmeessi",
+    "step_hashing": "Suuraa dubbisaa jira…",
+    "step_preparing": "Qopheessaa jira…",
+    "step_signing": "Wallet kee keessatti mirkaneessi…",
+    "step_sending": "Stellar irratti galmeessaa jira…",
+    "done": "{kg} kg galmeeffame",
+    "done_text": "Bachiin amma Fudhatameera. Qonnaan bulaan ni beeksifama.",
+    "view_tx": "Daddabarsa Stellar irratti ilaali",
+    "error_generic": "Rakkoon uumame. Irra deebi'ii yaali.",
+    "error_cancelled": "Mallattoo dhiiftee jirta. Wanti galmeeffame hin jiru."
+  },
+  "summary": {
+    "title": "Pilootii walumaan",
+    "subtitle": "Waan waldaalee sadan keessatti ta'aa jiru. Qonnaan bultoonni ID waldaa isaaniitiin qofa mul'atu; tarkaanfiin hundi Stellar irra jira.",
+    "tile_batches": "Bachiiwwan",
+    "tile_batches_hint": "{count} madaalamuu eegaa jiru",
+    "tile_kg": "kg fudhatame",
+    "tile_kg_hint": "Walitti qabdotaan madaalame",
+    "tile_farmers": "Qonnaan bultoota walqabatan",
+    "tile_farmers_hint": "{total} tarree waldaalee irra jiran keessaa",
+    "tile_consent": "Waliigaltee EUDR qaban",
+    "tile_consent_hint": "Stellar irratti galmeeffame",
+    "by_coop": "Waldaadhaan",
+    "col_coop": "Waldaa",
+    "col_farmers": "Qonnaan bultoota",
+    "col_batches": "Bachiiwwan",
+    "col_kg": "kg",
+    "recent_title": "Isa dhumaa Stellar irratti",
+    "recent_empty": "Ammatti wanti galmeeffame hin jiru.",
+    "event_delivered_kg": "{farmer} {center} irratti gara {kg} kg galfate",
+    "event_delivered": "{farmer} {center} irratti buna galfate",
+    "event_received": "{center} irratti {kg} kg madaalame",
+    "event_stage": "{batch} gara sadarkaa haaraatti ce'e",
+    "view_tx": "Daddabarsa"
   }
 }

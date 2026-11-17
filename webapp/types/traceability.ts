@@ -116,11 +116,22 @@ export interface PilotSummary {
     farmersLinked: number
     batches: number
     receivedKg: number
+    collectionCenters: number
+    byStage: Partial<Record<BatchStage, number>>
   }[]
   recent: {
     stage: BatchStage
     at: string
     txHash: string
-    batch: Pick<Batch, 'id' | 'number' | 'farmerRef' | 'organization' | 'collectionCenter' | 'estimatedKg' | 'weightKg'>
+    batch: Pick<
+      Batch,
+      | 'id'
+      | 'number'
+      | 'farmerRef'
+      | 'organization'
+      | 'collectionCenter'
+      | 'estimatedKg'
+      | 'weightKg'
+    >
   }[]
 }

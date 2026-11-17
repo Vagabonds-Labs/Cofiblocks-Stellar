@@ -131,11 +131,11 @@ export async function getBatchNumber(viewer: Viewer, id: string): Promise<string
 export async function getSummary(_viewer: Viewer, recentLimit = 10) {
   const onChain = { createdOnChainAt: { not: null } } satisfies Prisma.BatchWhereInput;
   const [coops, farmersTotal, farmersLinked, farmersConsented, byStage, byCoop, weighed, recent] = await Promise.all([
-    prisma.organization.findMany({ where: { kind: 'COOPERATIVE' }, select: { id: true, code: true, name: true }, orderBy: { chainId: 'asc' } }),
+    prisma.organization.findMany({ where: { kind: 'COOPERATIVE' }, select: { id: true, code: true, name: true, _count: { select: { collectionCenters: true } } }, orderBy: { chainId: 'asc' } }),
     prisma.farmer.groupBy({ by: ['organizationId'], _count: { _all: true } }),
     prisma.farmer.groupBy({ by: ['organizationId'], where: { registeredAt: { not: null } }, _count: { _all: true } }),
     prisma.farmer.count({ where: { consentAt: { not: null } } }),
-    prisma.batch.groupBy({ by: ['stage'], where: onChain, _count: { _all: true } }),
+    prisma.batch.groupBy({ by: ['organizationId', 'stage'], where: onChain, _count: { _all: true } }),
     prisma.batch.groupBy({ by: ['organizationId'], where: onChain, _count: { _all: true }, _sum: { weightGrams: true } }),
     prisma.batch.aggregate({ where: { ...onChain, weightGrams: { not: null } }, _sum: { weightGrams: true } }),
     prisma.batchEvent.findMany({
@@ -148,6 +148,8 @@ export async function getSummary(_viewer: Viewer, recentLimit = 10) {
   const count = (rows: { organizationId: string; _count: { _all: number } }[], id: string) =>
     rows.find((r) => r.organizationId === id)?._count._all ?? 0;
   const gramsToKg = (grams: bigint | null | undefined) => (grams ? Number(grams) / 1000 : 0);
+  const stageCounts: Partial<Record<BatchStage, number>> = {};
+  for (const row of byStage) stageCounts[row.stage] = (stageCounts[row.stage] ?? 0) + row._count._all;
 
   return {
     farmers: {
@@ -157,17 +159,21 @@ export async function getSummary(_viewer: Viewer, recentLimit = 10) {
     },
     batches: {
       total: byStage.reduce((sum, r) => sum + r._count._all, 0),
-      byStage: Object.fromEntries(byStage.map((r) => [r.stage, r._count._all])) as Partial<Record<BatchStage, number>>,
+      byStage: stageCounts,
     },
     receivedKg: gramsToKg(weighed._sum.weightGrams),
     cooperatives: coops.map((coop) => {
       const batches = byCoop.find((r) => r.organizationId === coop.id);
       return {
-        ...coop,
+        id: coop.id,
+        code: coop.code,
+        name: coop.name,
+        collectionCenters: coop._count.collectionCenters,
         farmers: count(farmersTotal, coop.id),
         farmersLinked: count(farmersLinked, coop.id),
         batches: batches?._count._all ?? 0,
         receivedKg: gramsToKg(batches?._sum.weightGrams),
+        byStage: Object.fromEntries(byStage.filter((r) => r.organizationId === coop.id).map((r) => [r.stage, r._count._all])) as Partial<Record<BatchStage, number>>,
       };
     }),
     recent: recent.map((event) => ({

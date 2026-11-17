@@ -11,9 +11,14 @@ import { useTranslations } from 'next-intl'
 import { UserMenuProps } from './types'
 import { useUserMenuLogic } from '../../hooks/menu/useUserMenuLogic'
 
-export function UserMenu({ isLoggedIn, userName, walletAddress, isAdmin }: UserMenuProps) {
+export function UserMenu({
+  isLoggedIn,
+  userName,
+  walletAddress,
+  isAdmin,
+}: UserMenuProps) {
   const t = useTranslations()
-  const { menuRef, displayName, isMenuOpen, toggleMenu, go, logout } = useUserMenuLogic({
+  const { menuRef, isMenuOpen, toggleMenu, go, logout } = useUserMenuLogic({
     isLoggedIn,
     userName,
     walletAddress,
@@ -24,12 +29,16 @@ export function UserMenu({ isLoggedIn, userName, walletAddress, isAdmin }: UserM
       <button
         onClick={toggleMenu}
         aria-expanded={isLoggedIn ? isMenuOpen : undefined}
-        aria-label={isLoggedIn ? t('header.user_menu_alt') : t('header.login_alt')}
+        aria-label={
+          isLoggedIn ? t('header.user_menu_alt') : t('header.login_alt')
+        }
         className="flex flex-col items-center justify-center gap-0.5 rounded-xl px-2.5 py-1.5 transition-all duration-300 hover:bg-[rgba(40,107,86,0.12)]"
       >
         <UserIcon className="h-6 w-6" aria-hidden="true" />
         <span className="max-w-28 truncate text-xs font-semibold">
-          {isLoggedIn ? displayName || t('header.my_account') : t('header.login_alt')}
+          {isLoggedIn
+            ? userName.trim() || t('header.my_account')
+            : t('header.login_alt')}
         </span>
       </button>
 
@@ -60,7 +69,10 @@ export function UserMenu({ isLoggedIn, userName, walletAddress, isAdmin }: UserM
               </>
             )}
 
-            <button onClick={logout} className="menu-item menu-item-danger mt-2">
+            <button
+              onClick={logout}
+              className="menu-item menu-item-danger mt-2"
+            >
               <ArrowRightStartOnRectangleIcon className="h-5 w-5" />
               {t('user_menu.button_logout')}
             </button>

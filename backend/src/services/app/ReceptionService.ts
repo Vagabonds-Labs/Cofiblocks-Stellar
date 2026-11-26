@@ -1,17 +1,18 @@
 import { BatchStage, StaffRole } from '@prisma/client';
 
+import { MAX_WEIGHT_KG } from '@/config/pilot';
 import { HttpException } from '@/exceptions/HttpException';
 import { addressVal, bytes32Val, stringVal, u64Val } from '@/lib/StellarContracts/utils/scval';
 import type { PreparedTransaction } from '@/lib/StellarContracts/types/transactions';
 import { logger } from '@/lib/logger';
 import { prisma } from '@/lib/prisma';
+import { batchUpdatedData } from '@/services/app/DeliveriesService';
 import { explorerTxUrl } from '@/services/app/FarmerDataService';
+import { buildFarmerRef } from '@/services/app/FarmersService';
+import { enqueueWebhook } from '@/services/app/WebhooksService';
 import * as OnChainTraceabilityService from '@/services/onchain/OnChainTraceabilityService';
 import { asStaffSigned, ensureOnChain, transactionPending } from '@/services/onchain/ensureOnChain';
 import { sha256Canonical } from '@/utils/canonicalJson';
-
-/** Largest weight a Collector may record for one delivery, in kg. */
-const MAX_WEIGHT_KG = 5000;
 
 export interface ReceptionInput {
   /** Batch number, e.g. `24-11-2026 KK-ID001`. */
@@ -47,7 +48,12 @@ async function load(userId: string, input: ReceptionInput) {
 
   const batch = await prisma.batch.findUnique({
     where: { number: input.batchNumber },
-    include: { collectionCenter: true },
+    include: {
+      collectionCenter: true,
+      organization: { select: { code: true } },
+      farmer: { select: { coopFarmerId: true } },
+      deliveryProposal: { select: { weightKg: true } },
+    },
   });
   if (!batch) throw new HttpException(404, `Batch ${input.batchNumber} not found`, 'BATCH_NOT_FOUND');
   if (batch.organizationId !== user.organizationId) {
@@ -65,6 +71,18 @@ async function load(userId: string, input: ReceptionInput) {
   }
 
   const weightGrams = BigInt(Math.round(input.weightKg * 1000));
+  // The farmer confirmed this weight in the bot: the Collector signs that one.
+  if (batch.deliveryProposal) {
+    const confirmed = BigInt(Math.round(Number(batch.deliveryProposal.weightKg) * 1000));
+    if (confirmed !== weightGrams) {
+      throw new HttpException(
+        409,
+        `The farmer confirmed ${Number(batch.deliveryProposal.weightKg)} kg for this delivery`,
+        'WEIGHT_MISMATCH',
+        { confirmed_kg: Number(batch.deliveryProposal.weightKg) }
+      );
+    }
+  }
   const record = receptionRecord(batch.number, user.walletAddress, weightGrams, input);
   const dataHash = sha256Canonical(record);
   const args = [
@@ -150,6 +168,8 @@ export async function submitReception(userId: string, input: ReceptionInput, sig
         record.receipt_sha256,
         dataHash
       );
+      const receivedAt = new Date();
+      const farmerRef = buildFarmerRef(batch.organization.code, batch.farmer.coopFarmerId);
       await prisma.$transaction([
         prisma.batch.update({
           where: { id: batch.id },
@@ -159,7 +179,7 @@ export async function submitReception(userId: string, input: ReceptionInput, sig
             receiptHash: record.receipt_sha256,
             receptionTx: hash,
             receptionTxValidUntil: null,
-            receivedAt: new Date(),
+            receivedAt,
             receivedById: user.id,
           },
         }),
@@ -176,6 +196,11 @@ export async function submitReception(userId: string, input: ReceptionInput, sig
           },
           update: {},
         }),
+        enqueueWebhook(
+          `batch.updated:${hash}`,
+          'batch.updated',
+          batchUpdatedData({ ...batch, stage: BatchStage.RECEIVED, weightGrams, updatedAt: receivedAt }, farmerRef, hash)
+        ),
       ]);
     },
     pending: transactionPending,

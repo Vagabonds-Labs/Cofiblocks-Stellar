@@ -50,15 +50,37 @@ export async function registerUser(
     );
   }
 
+  // A Cavos signature says the login was Cavos; the web app says whether it
+  // was email or Telegram. A Stellar signature is always an own wallet.
+  const loginMethod =
+    data.walletProvider === 'cavos'
+      ? data.loginMethod === 'email' || data.loginMethod === 'telegram'
+        ? data.loginMethod
+        : null
+      : 'wallet';
+  const login = {
+    loginMethod,
+    loginIdentity: loginMethod === 'wallet' ? null : data.loginIdentity?.trim().slice(0, 254) || null,
+    walletApp: loginMethod === 'wallet' ? data.walletApp?.trim().slice(0, 32) || null : null,
+  };
+
   const existingUser = await dbUsers.findUserByWalletAddress(data.walletAddress);
   if (existingUser) {
-    return { user: existingUser, isNewUser: false };
+    // Keep what we knew if this login did not say (e.g. a restored Cavos session).
+    const user = await dbUsers.updateUser(existingUser.id, {
+      lastLoginAt: new Date(),
+      ...(login.loginMethod && { loginMethod: login.loginMethod }),
+      ...(login.loginIdentity && { loginIdentity: login.loginIdentity }),
+      ...(login.walletApp && { walletApp: login.walletApp }),
+    });
+    return { user, isNewUser: false };
   }
 
   const user = await dbUsers.createUser({
     walletAddress: data.walletAddress,
     walletProvider: data.walletProvider || 'stellar',
     isAdmin: false,
+    ...login,
   });
   return { user, isNewUser: true };
 }

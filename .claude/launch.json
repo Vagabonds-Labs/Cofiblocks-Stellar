@@ -27,15 +27,28 @@
       "name": "backend-local-db",
       "runtimeExecutable": "env",
       "runtimeArgs": [
+        "FRONTEND_URL=http://localhost:3001",
+        "PORT=4001",
         "DATABASE_URL=postgresql://postgres@127.0.0.1:55432/traceability",
         "DIRECT_URL=postgresql://postgres@127.0.0.1:55432/traceability",
+        "VOICELEDGER_NOTIFY_URL=http://localhost:4555/voiceledger",
+        "VOICELEDGER_NOTIFY_SECRET=local-notify-secret-do-not-use",
         "npm",
         "--prefix",
         "backend",
         "run",
         "dev"
       ],
-      "port": 4000
+      "port": 4001
+    },
+    {
+      "name": "webapp-local-copy",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /private/tmp/claude-501/-Users-jonatan-Desktop-cofiblocks-Cofiblocks-Traceability/0962c48a-3871-46a0-b4e7-e77bf248df0b/scratchpad/webapp-copy && ./node_modules/.bin/next dev --webpack -p 3001"
+      ],
+      "port": 3001
     }
   ]
 }

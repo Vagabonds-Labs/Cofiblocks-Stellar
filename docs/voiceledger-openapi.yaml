@@ -1,15 +1,18 @@
 openapi: 3.1.0
 info:
   title: CofiBlocks Traceability — VoiceLedger integration
-  version: 2026-11-12
+  version: 2026-11-23
   description: |
-    Events that VoiceLedger's farmer bot sends to CofiBlocks. The full contract
-    (signing, retries, conversation rules) is in `voiceledger-integration.md`;
-    this file is the machine-readable part.
+    Events that VoiceLedger's farmer bot sends to CofiBlocks, the farmer's
+    batches it can read, and the webhooks CofiBlocks sends back. The full
+    contract (signing, retries, conversation rules) is in
+    `voiceledger-integration.md`; this file is the machine-readable part.
 
     Every request is signed: `X-VoiceLedger-Signature` is `sha256=` + hex of
     `HMAC-SHA256(secret, "<timestamp>.<METHOD>.<path>.<raw body>")`, and
     `X-VoiceLedger-Timestamp` is the Unix time in seconds (±5 minutes).
+    Webhooks are signed the same way with `X-CofiBlocks-Signature`,
+    `X-CofiBlocks-Timestamp` and a separate webhook secret.
 servers:
   - url: http://localhost:4000
     description: Local backend (staging URL shared privately)
@@ -31,6 +34,7 @@ paths:
                 - $ref: '#/components/schemas/FarmerLinkedEvent'
                 - $ref: '#/components/schemas/FarmerConsentEvent'
                 - $ref: '#/components/schemas/FarmerProfileEvent'
+                - $ref: '#/components/schemas/DeliveryConfirmationEvent'
                 - $ref: '#/components/schemas/DeliveryCreatedEvent'
               discriminator:
                 propertyName: type
@@ -38,6 +42,7 @@ paths:
                   farmer.linked: '#/components/schemas/FarmerLinkedEvent'
                   farmer.consent: '#/components/schemas/FarmerConsentEvent'
                   farmer.profile: '#/components/schemas/FarmerProfileEvent'
+                  delivery.confirmation: '#/components/schemas/DeliveryConfirmationEvent'
                   delivery.created: '#/components/schemas/DeliveryCreatedEvent'
             examples:
               farmer.linked:
@@ -71,7 +76,17 @@ paths:
                         size: { value: 1.5, unit: fachasa }
                         location: { lat: 7.86, lng: 36.62, source: shared }
                     practices: { shade_trees: true, fertilizer: compost }
+              delivery.confirmation:
+                value:
+                  event_id: 6d5c4b3a-2f1e-4d0c-9b8a-7f6e5d4c3b2a
+                  type: delivery.confirmation
+                  data:
+                    proposal_id: 0f6c1d2e-8b7a-4c3d-9e1f-2a3b4c5d6e7f
+                    farmer_ref: KK-ID001
+                    accepted: true
+                    answered_at: '2026-12-01T08:20:00Z'
               delivery.created:
+                summary: Not used in the pilot flow (simulator and fallback only)
                 value:
                   event_id: 8a4b6c2d-1e3f-4a5b-9c7d-0e1f2a3b4c5d
                   type: delivery.created
@@ -94,6 +109,7 @@ paths:
                       - $ref: '#/components/schemas/FarmerLinkedResult'
                       - $ref: '#/components/schemas/FarmerConsentResult'
                       - $ref: '#/components/schemas/FarmerProfileResult'
+                      - $ref: '#/components/schemas/DeliveryConfirmationResult'
                       - $ref: '#/components/schemas/DeliveryCreatedResult'
         '202':
           description: Another copy of this event is being processed. Check its status a few seconds later.
@@ -126,6 +142,63 @@ paths:
         '200': { description: The stored success answer (same body as the POST). }
         '202': { description: Still processing. }
         '404': { $ref: '#/components/responses/Failure' }
+  /api/integrations/voiceledger/farmers/{farmerRef}/batches:
+    get:
+      summary: A farmer's batches and the deliveries waiting for their answer
+      description: Up to 20 batches, newest first.
+      operationId: getFarmerBatches
+      parameters:
+        - $ref: '#/components/parameters/Timestamp'
+        - name: farmerRef
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/FarmerRef' }
+      responses:
+        '200':
+          description: The farmer's batches.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FarmerBatches' }
+        '401': { $ref: '#/components/responses/Failure' }
+        '404': { $ref: '#/components/responses/Failure' }
+webhooks:
+  voiceLedgerNotification:
+    post:
+      summary: Notification from CofiBlocks to the URL VoiceLedger gives us
+      description: |
+        Signed with `X-CofiBlocks-Signature` = `sha256=` + hex of
+        `HMAC-SHA256(webhook_secret, "<timestamp>.POST.<path>.<raw body>")`
+        and `X-CofiBlocks-Timestamp`. Answer any 2xx within 10 seconds once
+        stored; otherwise we retry the same `notification_id` for 24 hours.
+        Deduplicate by `notification_id`; the order is not guaranteed.
+      operationId: receiveNotification
+      security: []
+      parameters:
+        - name: X-CofiBlocks-Timestamp
+          in: header
+          required: true
+          schema: { type: string, pattern: '^\d+$' }
+        - name: X-CofiBlocks-Signature
+          in: header
+          required: true
+          schema: { type: string, pattern: '^sha256=[0-9a-f]{64}$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/DeliveryProposedNotification'
+                - $ref: '#/components/schemas/DeliveryProposalClosedNotification'
+                - $ref: '#/components/schemas/BatchUpdatedNotification'
+              discriminator:
+                propertyName: type
+                mapping:
+                  delivery.proposed: '#/components/schemas/DeliveryProposedNotification'
+                  delivery.proposal_closed: '#/components/schemas/DeliveryProposalClosedNotification'
+                  batch.updated: '#/components/schemas/BatchUpdatedNotification'
+      responses:
+        '2XX': { description: Stored. Any other answer is retried. }
 components:
   securitySchemes:
     voiceLedgerSignature:
@@ -182,6 +255,9 @@ components:
                       - ESTIMATED_KG_TOO_HIGH
                       - INVALID_DELIVERY_DATE
                       - TOO_MANY_DELIVERIES
+                      - PROPOSAL_NOT_FOUND
+                      - PROPOSAL_FARMER_MISMATCH
+                      - PROPOSAL_CLOSED
                       - REGISTRATION_PENDING
                       - TRANSACTION_PENDING
                       - STELLAR_RPC_UNAVAILABLE
@@ -203,7 +279,7 @@ components:
         occurred_at:
           type: string
           format: date-time
-          description: When it happened on VoiceLedger's side. For deliveries it sets the delivery date (at most 14 days back).
+          description: When it happened on VoiceLedger's side. For `delivery.created` it sets the delivery date (at most 14 days back), so keep the original value on retries.
     FarmerRef:
       type: string
       pattern: '^[A-Za-z]{1,16}-\S+$'
@@ -236,6 +312,10 @@ components:
                 telegram_user_id: { type: string, pattern: '^\d{1,20}$' }
                 telegram_username: { type: [string, 'null'], maxLength: 64 }
                 language: { type: [string, 'null'], enum: [om, am, en, null] }
+                confirmed_by_telegram_user_id:
+                  type: [string, 'null']
+                  pattern: '^\d{1,20}$'
+                  description: Facilitator who confirmed the farmer in the bot. Stored with the event; not checked in the pilot.
     FarmerLinkedResult:
       allOf:
         - $ref: '#/components/schemas/TxResult'
@@ -348,7 +428,153 @@ components:
                       hectares: { type: [number, 'null'], description: '`null` until the unit''s conversion factor is confirmed.' }
             practices: { type: object }
 
+    ProposalId:
+      type: string
+      format: uuid
+      description: Sent by CofiBlocks in `delivery.proposed`.
+    BatchStage:
+      type: string
+      enum:
+        - DELIVERED
+        - RECEIVED
+        - WASHING
+        - FERMENTATION
+        - DRYING
+        - STORAGE
+        - IN_TRANSPORT_TO_UNION
+        - PREPARED_WITH_EXPORTABLE_BAG
+        - SOLD
+    WeightKg:
+      type: number
+      exclusiveMinimum: 0
+      description: From the collection center's scale, up to 2 decimals.
+
+    DeliveryConfirmationEvent:
+      description: The farmer's answer to a `delivery.proposed` notification.
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            type: { const: delivery.confirmation }
+            data:
+              allOf:
+                - $ref: '#/components/schemas/Evidence'
+                - type: object
+                  required: [proposal_id, farmer_ref, accepted, answered_at]
+                  properties:
+                    proposal_id: { $ref: '#/components/schemas/ProposalId' }
+                    farmer_ref: { $ref: '#/components/schemas/FarmerRef' }
+                    accepted: { type: boolean, description: The farmer's explicit answer. Never a default. }
+                    answered_at: { type: string, format: date-time }
+    DeliveryConfirmationResult:
+      type: object
+      required: [proposal_id, accepted, batch_id, data_hash, tx_hash, explorer_url]
+      description: For a no, `batch_id`, `data_hash`, `tx_hash` and `explorer_url` are `null` and nothing is recorded.
+      properties:
+        proposal_id: { $ref: '#/components/schemas/ProposalId' }
+        accepted: { type: boolean }
+        batch_id: { type: [string, 'null'], description: Store and show it as is; do not build or parse it. }
+        farmer_ref: { $ref: '#/components/schemas/FarmerRef' }
+        collection_center: { type: string }
+        weight_kg: { $ref: '#/components/schemas/WeightKg' }
+        delivered_at: { type: string, format: date-time }
+        stage: { const: DELIVERED }
+        data_hash: { type: [string, 'null'] }
+        tx_hash: { type: [string, 'null'] }
+        explorer_url: { type: [string, 'null'], format: uri }
+
+    FarmerBatches:
+      type: object
+      required: [farmer_ref, batches, pending_proposals]
+      properties:
+        farmer_ref: { $ref: '#/components/schemas/FarmerRef' }
+        batches:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required: [batch_id, stage, collection_center, delivered_at, updated_at]
+            properties:
+              batch_id: { type: string }
+              stage: { $ref: '#/components/schemas/BatchStage' }
+              collection_center: { type: string }
+              weight_kg: { $ref: '#/components/schemas/WeightKg' }
+              delivered_at: { type: string, format: date-time }
+              updated_at: { type: string, format: date-time }
+              explorer_url: { type: [string, 'null'], format: uri, description: The batch's latest on-chain step. }
+        pending_proposals:
+          type: array
+          description: Deliveries still waiting for this farmer's answer.
+          items:
+            type: object
+            required: [proposal_id, collection_center, weight_kg, delivered_at, expires_at]
+            properties:
+              proposal_id: { $ref: '#/components/schemas/ProposalId' }
+              collection_center: { type: string }
+              weight_kg: { $ref: '#/components/schemas/WeightKg' }
+              delivered_at: { type: string, format: date-time }
+              expires_at: { type: string, format: date-time }
+
+    Notification:
+      type: object
+      required: [notification_id, type, occurred_at, data]
+      properties:
+        notification_id: { type: string, format: uuid, description: Same on every retry; deduplicate by it. }
+        type: { type: string }
+        occurred_at: { type: string, format: date-time }
+    DeliveryProposedNotification:
+      description: A collector recorded a delivery. Ask the farmer and answer with `delivery.confirmation`.
+      allOf:
+        - $ref: '#/components/schemas/Notification'
+        - type: object
+          properties:
+            type: { const: delivery.proposed }
+            data:
+              type: object
+              required: [proposal_id, farmer_ref, collection_center, weight_kg, delivered_at, expires_at]
+              properties:
+                proposal_id: { $ref: '#/components/schemas/ProposalId' }
+                farmer_ref: { $ref: '#/components/schemas/FarmerRef' }
+                collection_center: { type: string }
+                weight_kg: { $ref: '#/components/schemas/WeightKg' }
+                delivered_at: { type: string, format: date-time }
+                expires_at: { type: string, format: date-time, description: 48 hours after it was recorded. }
+    DeliveryProposalClosedNotification:
+      description: The proposal can no longer be answered. Stop asking the farmer about it.
+      allOf:
+        - $ref: '#/components/schemas/Notification'
+        - type: object
+          properties:
+            type: { const: delivery.proposal_closed }
+            data:
+              type: object
+              required: [proposal_id, farmer_ref, reason]
+              properties:
+                proposal_id: { $ref: '#/components/schemas/ProposalId' }
+                farmer_ref: { $ref: '#/components/schemas/FarmerRef' }
+                reason: { type: string, enum: [cancelled, expired] }
+    BatchUpdatedNotification:
+      description: A batch of this farmer changed stage. Telling the farmer is optional for the pilot.
+      allOf:
+        - $ref: '#/components/schemas/Notification'
+        - type: object
+          properties:
+            type: { const: batch.updated }
+            data:
+              type: object
+              required: [batch_id, farmer_ref, stage, collection_center, updated_at, tx_hash, explorer_url]
+              properties:
+                batch_id: { type: string }
+                farmer_ref: { $ref: '#/components/schemas/FarmerRef' }
+                stage: { $ref: '#/components/schemas/BatchStage' }
+                collection_center: { type: string }
+                weight_kg: { $ref: '#/components/schemas/WeightKg' }
+                updated_at: { type: string, format: date-time, description: Ignore an update older than the one you have. }
+                tx_hash: { type: string }
+                explorer_url: { type: string, format: uri }
+
     DeliveryCreatedEvent:
+      description: Not used in the pilot flow (deliveries come from the collector). Kept for the simulator and as a fallback.
       allOf:
         - $ref: '#/components/schemas/Envelope'
         - type: object

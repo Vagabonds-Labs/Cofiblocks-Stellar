@@ -1,10 +1,20 @@
 # VoiceLedger integration — proposal
 
-> **Status:** proposal for VoiceLedger to review. All four events (`farmer.linked`, `farmer.consent`, `farmer.profile`, `delivery.created`) are implemented on our side and run against Stellar Testnet. The consent texts, the practice questions and the area units are still provisional (see below). There is no shared environment yet: until we share a staging URL, build against this document and the [OpenAPI description](voiceledger-openapi.yaml), and check your signing code with the [test vectors](#test-vectors).
+> **Status:** agreed with VoiceLedger, with the delivery flow changed in the 23 November meeting. Everything in this document is implemented on our side and runs against Stellar Testnet, including the new delivery flow ([`delivery.proposed` webhook](#webhooks-to-voiceledger), [`delivery.confirmation` event](#deliveryconfirmation--implemented), [farmer's batches](#a-farmers-batches--implemented)). The consent texts, the practice questions and the area units are still provisional (see below). Until we share a staging URL, build against this document and the [OpenAPI description](voiceledger-openapi.yaml), and check your signing code with the [test vectors](#test-vectors).
+
+### Changes since the 11 November version
+
+- **Deliveries are recorded by the collector**, in the CofiBlocks web app. The bot no longer asks for the center and the quantity: it shows the farmer what the collector recorded and sends back their answer (`delivery.confirmation`). `delivery.created` stays available but is not part of the pilot flow.
+- **Notifications are webhooks** from CofiBlocks to VoiceLedger ([Webhooks to VoiceLedger](#webhooks-to-voiceledger)).
+- **Farmers can ask where their coffee is:** the bot reads it with a signed `GET` ([A farmer's batches](#a-farmers-batches--implemented)).
+- **Linking** is done by the project's facilitators with VoiceLedger's one-time-code flow, and `farmer.linked` carries `confirmed_by_telegram_user_id`.
+- **Consent is required** before profile and deliveries (`409 CONSENT_REQUIRED`), and only an acceptance of every declaration counts.
+- **`occurred_at`** of a delivery event is the delivery date: keep the original value when retrying.
+- Results, error codes and `503 TRANSACTION_PENDING` are now documented for every event.
 
 ## Pilot scope
 
-This is a closed pilot with participants selected from cooperative-provided lists. CofiBlocks will preload their existing data before onboarding. We need VoiceLedger to provide a simple Telegram experience for these farmers: link their Telegram account once, collect consent and the limited additional farm information described below, and register coffee deliveries through guided voice or button-based interactions. Farmers should not need passwords, wallets, or technical knowledge.
+This is a closed pilot with participants selected from cooperative-provided lists. CofiBlocks will preload their existing data before onboarding. We need VoiceLedger to provide a simple Telegram experience for these farmers: link their Telegram account once, collect consent and the limited additional farm information described below, confirm each coffee delivery the collector records, and tell them where their coffee is, through guided voice or button-based interactions. Farmers should not need passwords, wallets, or technical knowledge.
 
 Telegram is the farmers' only point of contact with the system. CofiBlocks manages the records, the traceability of each batch and every blockchain operation; the bot never deals with wallets or transactions.
 
@@ -13,20 +23,30 @@ Telegram is the farmers' only point of contact with the system. CofiBlocks manag
 1. **Assisted onboarding, once per farmer.** The farmer is validated against their cooperative's list with the cooperative's help, and the bot then sends `farmer.linked` (see [Linking a farmer](#linking-a-farmer)). After that the bot keeps the link between the farmer's `telegram_user_id` and the `farmer_ref` we return: the farmer never types their ID again.
 2. **Consent.** Show the consent texts we provide, record the farmer's explicit answer and when it was given, and send `farmer.consent`.
 3. **A short farm questionnaire and corrections.** Follow the fixed questionnaire CofiBlocks provides based on the existing lists (see [Existing participant data](#existing-participant-data)). Do not repeat the registration form. Send additional farm information or corrections through `farmer.profile`.
-4. **Deliveries.** Collect the collection center and the estimated quantity, confirm them with the farmer, and send `delivery.created`.
-5. **Weight confirmation.** Tell the farmer the weight the cooperative recorded for their delivery (see [Notifications](#notifications-back-to-voiceledger)).
+4. **Delivery confirmation.** When the collector records a delivery, we send it to you (`delivery.proposed`). Show the farmer the center, the weight and the date in their language, by text and voice, ask them to confirm it, and send their answer with `delivery.confirmation`. See [Deliveries](#deliveries).
+5. **Batch status.** When the farmer asks where their coffee is, read their batches with [`GET …/farmers/{farmer_ref}/batches`](#a-farmers-batches--implemented) and tell them the stage in plain words. Telling them about later stage changes (`batch.updated`) is optional for the pilot.
 6. **The conversation rules below**, and the bot's texts in the farmers' languages.
-7. **The technical contract:** the four events in this format, signed, with the retry rules and error codes in this document.
+7. **The technical contract:** the events, the webhooks and the `GET` in this format, signed, with the retry rules and error codes in this document.
+
+### Deliveries
+
+1. The farmer brings coffee to a collection center. The collector weighs it and records it in the CofiBlocks web app: farmer, center, weight and date.
+2. We send `delivery.proposed` to your webhook with a `proposal_id`.
+3. The bot shows the farmer what was recorded ("Kirkir, 45 kg, 1 December") and asks: is this your delivery? Yes or no.
+4. The bot sends `delivery.confirmation` with the answer.
+   - **Yes:** we record the batch on chain and the result carries the `batch_id`. Tell the farmer it was recorded.
+   - **No:** nothing is recorded and the collector sees it was rejected. They correct it and record it again, which sends a new `delivery.proposed`.
+5. A proposal that gets no answer within 48 hours expires, and so does one the collector cancels. We send `delivery.proposal_closed`; stop asking about it.
 
 ### Conversation rules
 
 - Remember the language the farmer chose.
 - Accept voice, and offer buttons to confirm or correct what was understood.
 - Ask one question at a time.
-- Before sending a delivery, read back what was understood (center and quantity) and wait for the farmer's confirmation.
+- For a delivery, show exactly what the collector recorded (center, weight, date) and wait for an explicit yes or no. Never confirm for the farmer.
 - For a network failure or a 5xx, explain that confirmation is pending and retry in the background with the same `event_id`. For `202 processing`, follow the status-check rules below. For a final business error, help correct the data or contact the cooperative; do not retry unchanged invalid data indefinitely. Never ask the farmer to repeat an action just because confirmation is delayed.
 - Always offer a way out to get help from the cooperative.
-- The main confirmation says what was recorded, in plain words ("Your delivery of about 45 kg at Kirkir was recorded"). The blockchain explorer link is secondary and optional.
+- The main confirmation says what was recorded, in plain words ("Your delivery of 45 kg at Kirkir was recorded"). The blockchain explorer link is secondary and optional.
 
 ## What CofiBlocks still owes VoiceLedger
 
@@ -37,15 +57,16 @@ Telegram is the farmers' only point of contact with the system. CofiBlocks manag
 | Short farm questionnaire and the limited existing values needed by the bot | Based on the lists below; CofiBlocks will provide these before profile testing, without requiring a general-purpose profile lookup API |
 | Meaning and units of the existing land areas, and meaning of the coordinates | Confirm the actual area units and local conversion factor with the cooperatives, and whether these describe the coffee farm or the beneficiary's residence/total land |
 | Final practice questions and answer choices | Still to confirm; the `practices` example below is provisional |
-| Staging URL and the per-environment secret | When staging is up |
-| Notification mechanism for the weight confirmation (webhook or polling) | To agree with you |
+| Staging URL and the per-environment secrets (events and webhooks) | When staging is up |
 | Confirmed spelling of the collection center names | Being confirmed with the cooperatives |
 
 ## Who does what
 
 - **VoiceLedger** runs the farmers' Telegram bot: the conversation, voice recognition in the local languages (Afaan Oromoo, Amharic), the bot's texts and translations. It turns what the farmer says or chooses into the JSON events below and sends them to us.
 - **CofiBlocks** receives the events, checks them against the cooperatives' lists, stores the full record privately and writes the on-chain record on Stellar. Farmers have no wallet: a CofiBlocks backend account (the *farmer agent*) signs every farmer action. On chain, a farmer is only their pseudonymous `farmer_ref` (e.g. `KK-ID001`); names, phone numbers and GPS points never go on chain.
-- **The cooperatives** provide the farmer lists, help with onboarding and resolve problems the bot cannot (a wrong ID, an account linked to the wrong person).
+- **The collectors** record each delivery (center, weight, date) in the CofiBlocks web app, and sign the weight on chain once the farmer confirms it.
+- **The project's facilitators** help each farmer start the bot and link their account.
+- **The cooperatives** provide the farmer lists and resolve problems the bot cannot (a wrong ID, an account linked to the wrong person).
 
 ## Existing participant data
 
@@ -64,7 +85,7 @@ The coordinates are labelled **beneficiary location**, and the areas describe **
 
 The source area headers say **"Owned unit land in Hectar?"** and **"Rent unit land in Hectar?"**. These labels alone do not confirm the actual units of the recorded values or the units farmers use. Preserve the source values until the cooperative confirms their units. In the conversation, accept the local unit used by the farmer; do not require the farmer to convert to hectares.
 
-What VoiceLedger does need to collect is the Telegram account link, the preferred language, explicit consent, the agreed practice answers, and each new delivery. Ask for coffee-plot area or location only where CofiBlocks' final questionnaire identifies a genuine gap or the farmer needs to correct it. The lists do not contain practice answers; the intervention/training columns are not farming practices.
+What VoiceLedger does need to collect is the Telegram account link, the preferred language, explicit consent, the agreed practice answers, and the farmer's answer to each delivery the collector records. Ask for coffee-plot area or location only where CofiBlocks' final questionnaire identifies a genuine gap or the farmer needs to correct it. The lists do not contain practice answers; the intervention/training columns are not farming practices.
 
 For this pilot, CofiBlocks will supply a short fixed questionnaire and any participant-specific exceptions or existing values needed for confirmation before joint testing. VoiceLedger does not need to inspect the full source workbooks or build a dynamic questionnaire engine.
 
@@ -72,20 +93,24 @@ For this pilot, CofiBlocks will supply a short fixed questionnaire and any parti
 
 Before onboarding, CofiBlocks will preload the selected farmers from the cooperatives' lists, including the existing information described above. Linking is not self-registration: a farmer cannot join by typing any ID.
 
-The proposed flow:
+The agreed flow (VoiceLedger's proposal: assisted linking with a one-time code):
 
-1. A cooperative member (collector or field staff) helps the farmer start the bot and choose their language.
-2. The farmer is validated against the cooperative's list: their cooperative ID, and their name or phone where the list has them. The phone is optional, because some list entries do not have one.
-3. The bot sends `farmer.linked` with the cooperative code, the farmer's ID and the Telegram account.
-4. The bot stores the returned `farmer_ref` for that Telegram account and uses it in every later event.
+1. A facilitator of the project helps the farmer start the bot and choose their language.
+2. The bot shows the farmer a one-time code.
+3. The facilitator, in the bot's facilitator mode, picks the farmer from the cooperative's list, enters the code and confirms the farmer's identity in person.
+4. The bot sends `farmer.linked` and stores the returned `farmer_ref` for that Telegram account. It uses it in every later event.
 
-**To agree with you:** how the cooperative's validation in step 2 is represented in the bot and in the event. For example, the cooperative member confirms the farmer from their own Telegram account, or the cooperative hands each farmer a one-time onboarding code. We would like your proposal; once agreed, we add the field to `farmer.linked`. The current fields keep working in the meantime.
+The code is single-use, expires after a short time (about 10 minutes) and is tied to the farmer's Telegram account. Wrong codes are limited, and a bad, expired or used code gets the same error message. The farmer is identified by the numeric `telegram_user_id`, not by phone number or username.
+
+For the pilot, the code, the facilitator mode and the list of approved facilitators live in the bot; CofiBlocks does not run a second system for this step. CofiBlocks hands over the participant list (cooperative, farmer ID, name) and the facilitators' names. Please send the confirming facilitator's Telegram ID in `confirmed_by_telegram_user_id`: we keep it with the event as a record of who confirmed each farmer.
 
 ## Transport
 
 - **Endpoint:** `POST {API}/api/integrations/voiceledger/events`, one event per request, `Content-Type: application/json`.
 - **Status of an event:** `GET {API}/api/integrations/voiceledger/events/{event_id}`.
-- **Environments:** a staging URL and a per-environment secret will be shared privately once staging is up. Production gets its own secret.
+- **A farmer's batches:** `GET {API}/api/integrations/voiceledger/farmers/{farmer_ref}/batches`.
+- **Webhooks to VoiceLedger:** we `POST` to the URL you give us; see [Webhooks to VoiceLedger](#webhooks-to-voiceledger).
+- **Environments:** a staging URL and the per-environment secrets will be shared privately once staging is up. Production gets its own secrets.
 
 ### Authentication
 
@@ -135,7 +160,7 @@ The signature proves the request comes from VoiceLedger. It does not prove that 
 
 Every event has an `event_id` chosen by VoiceLedger (a UUID is fine).
 
-- **Retry with the same `event_id`** (timeouts, 5xx, network errors): we return the stored answer and do not write on chain again. A retry may re-serialize the JSON or refresh `occurred_at`; only `type` and `data` are compared.
+- **Retry with the same `event_id`** (timeouts, 5xx, network errors): we return the stored answer and do not write on chain again. A retry may re-serialize the JSON; only `type` and `data` are compared. Keep the original `occurred_at`: for deliveries it is the delivery date.
 - **Same `event_id` with a different `type` or `data`:** rejected with `409 EVENT_ID_REUSED`.
 - **A new farmer action** (for example a second delivery, or a correction to the profile) needs a **new** `event_id`.
 - Business errors (4xx) are final for that `event_id`. Server errors (5xx) are retried when the same `event_id` arrives again.
@@ -158,7 +183,7 @@ Every event has an `event_id` chosen by VoiceLedger (a UUID is fine).
 |---|---|---|
 | `event_id` | string, 1–128 | VoiceLedger's ID for the event. |
 | `type` | string | One of the event types below. |
-| `occurred_at` | ISO 8601, optional | When it happened on VoiceLedger's side. Informational. |
+| `occurred_at` | ISO 8601, optional | When it happened on VoiceLedger's side. For `delivery.created` it is the delivery date; for the other events it is informational. |
 | `data` | object | Depends on `type`. |
 
 ## Responses
@@ -218,6 +243,7 @@ The farmer was validated against their cooperative's list (see [Linking a farmer
 | `telegram_user_id` | string of digits | Telegram's numeric user ID, as a string (it can exceed JS's safe integer range). |
 | `telegram_username` | string, optional | |
 | `language` | string, optional | Language the farmer chose: `om`, `am` or `en`. |
+| `confirmed_by_telegram_user_id` | string of digits, optional | Telegram ID of the collector who confirmed the farmer (see [Linking a farmer](#linking-a-farmer)). Stored with the event; not checked in the pilot. |
 
 `result`:
 
@@ -265,7 +291,7 @@ CofiBlocks provides the consent texts and their versions in the three languages.
 - `consent_version` is the version of the text the bot showed; `answered_at` is when the farmer answered (ISO 8601). We only accept versions we published; a text never changes within a version.
 - `accepted` must be an explicit answer from the farmer (a button or a clear spoken yes/no), never a default.
 - `declarations` must contain exactly the declarations of that version (for `2026-11-v1`, the three above).
-- **Every answer is stored.** Only `accepted: true` with every declaration `true` counts as consent: it is recorded on chain and unlocks `farmer.profile` and `delivery.created`. Any other answer is stored without an on-chain write and withdraws an earlier consent, so profile and deliveries are blocked again until the farmer accepts.
+- **Every answer is stored.** Only `accepted: true` with every declaration `true` counts as consent: it is recorded on chain and unlocks `farmer.profile` and deliveries. Any other answer is stored without an on-chain write and withdraws an earlier consent, so profile and deliveries are blocked again until the farmer accepts.
 - The SHA-256 written on chain covers `farmer_ref`, `consent_version`, `language`, `accepted`, `declarations` and `answered_at`.
 
 `result`:
@@ -349,9 +375,62 @@ The result always carries the complete current profile, so the bot can read it b
 | `FARMER_NOT_FOUND`, `FARMER_NOT_LINKED` | 404, 409 | As for `farmer.consent`. |
 | `INVALID_PAYLOAD` | 400 | Neither `plots` nor `practices`, or a field is invalid (see `details`). |
 
-### `delivery.created` — implemented
+### `delivery.confirmation` — implemented
 
-The farmer delivered coffee at a collection center. The bot collects the center and the estimated quantity, reads them back, and sends the event only after the farmer confirms. We generate the batch number and record the delivery on chain. The final weight is recorded later by the cooperative staff in the CofiBlocks web app, and the farmer is told about it (see [Notifications](#notifications-back-to-voiceledger)).
+The farmer's answer to a delivery the collector recorded (see [Deliveries](#deliveries)). Send it once the farmer has said yes or no to what we sent in [`delivery.proposed`](#deliveryproposed--required).
+
+```json
+{
+  "proposal_id": "0f6c1d2e-8b7a-4c3d-9e1f-2a3b4c5d6e7f",
+  "farmer_ref": "KK-ID001",
+  "accepted": true,
+  "answered_at": "2026-12-01T08:20:00Z",
+  "transcript": "optional",
+  "audio_ref": "optional"
+}
+```
+
+- `proposal_id` and `farmer_ref` exactly as we sent them in `delivery.proposed`.
+- `accepted` must be the farmer's explicit answer (a button or a clear spoken yes/no), never a default.
+- Each proposal is answered once. Resending the same answer, even with a new `event_id`, returns the same result, so it is safe if you lost our response. A different answer for an already answered proposal is rejected (`PROPOSAL_CLOSED`).
+- The farmer must have consented (`CONSENT_REQUIRED` otherwise).
+- On a yes we record the batch on chain, which can take a few seconds or answer `503 TRANSACTION_PENDING` (retry the same `event_id`).
+
+`result` for a yes:
+
+```json
+{
+  "proposal_id": "0f6c1d2e-8b7a-4c3d-9e1f-2a3b4c5d6e7f",
+  "accepted": true,
+  "batch_id": "01-12-2026 KK-ID001",
+  "farmer_ref": "KK-ID001",
+  "collection_center": "Kirkir",
+  "weight_kg": 45,
+  "delivered_at": "2026-12-01T07:55:00.000Z",
+  "stage": "DELIVERED",
+  "data_hash": "fa4e5b1e…7ce8",
+  "tx_hash": "8cc76aea…cbcf",
+  "explorer_url": "https://stellar.expert/explorer/testnet/tx/8cc76aea…cbcf"
+}
+```
+
+For a no, `accepted` is `false` and `batch_id`, `data_hash`, `tx_hash` and `explorer_url` are `null`. Tell the farmer the collector will correct it.
+
+As with every batch ID, store and show `batch_id` as is; do not build or parse it.
+
+| Error code | HTTP | Meaning for the bot |
+|---|---|---|
+| `PROPOSAL_NOT_FOUND` | 404 | We never sent that `proposal_id`. |
+| `PROPOSAL_FARMER_MISMATCH` | 409 | The proposal belongs to another farmer. |
+| `PROPOSAL_CLOSED` | 409 | It expired, the collector cancelled it, or it already has a different answer; `details.status` says which. Do not ask the farmer again. |
+| `CONSENT_REQUIRED` | 409 | Ask for consent first, then send the answer again with a new `event_id`. |
+| `FARMER_NOT_FOUND`, `FARMER_NOT_LINKED` | 404, 409 | As for `farmer.consent`. |
+
+### `delivery.created` — implemented, not used in the pilot flow
+
+> In the pilot, deliveries come from the collector and the bot only confirms them (see [Deliveries](#deliveries)). We keep this event for our simulator and as a fallback; VoiceLedger does not need to build it.
+
+The farmer delivered coffee at a collection center. The bot collects the center and the estimated quantity, reads them back, and sends the event only after the farmer confirms. We generate the batch number and record the delivery on chain. The final weight is recorded later by the cooperative staff in the CofiBlocks web app.
 
 ```json
 {
@@ -401,34 +480,156 @@ CofiBlocks generates the batch ID; today it is `DD-MM-YYYY <farmer_ref>`, with `
 
 ### On-chain writes that are not confirmed yet
 
-`farmer.consent`, `farmer.profile` and `delivery.created` answer `503 TRANSACTION_PENDING` when their transaction was sent but is not confirmed yet (`farmer.linked` uses `503 REGISTRATION_PENDING`). Retry the same `event_id` a minute later: we never send a second transaction for it until the network proves the first one never landed.
+`farmer.consent`, `farmer.profile`, `delivery.confirmation` and `delivery.created` answer `503 TRANSACTION_PENDING` when their transaction was sent but is not confirmed yet (`farmer.linked` uses `503 REGISTRATION_PENDING`). Retry the same `event_id` a minute later: we never send a second transaction for it until the network proves the first one never landed.
 
-## Notifications back to VoiceLedger
+## A farmer's batches — implemented
 
-**Needed for the pilot:** when the cooperative staff record the weight of a delivery, the bot tells the farmer, for example "Your delivery 01-12-2026 KK-ID001 was received at Kirkir: 45 kg".
+For "where is my coffee?": the farmer's latest batches with their current stage, and the deliveries still waiting for their answer.
 
-**Optional for the pilot:** updates for the later stages of a batch (washing, drying, storage, sale).
+`GET {API}/api/integrations/voiceledger/farmers/{farmer_ref}/batches`, signed like any other `GET` (empty body; the path includes the `farmer_ref`).
 
-The mechanism is to be agreed: either we call a VoiceLedger webhook signed with the same HMAC scheme, or VoiceLedger polls an endpoint with each farmer's deliveries. Tell us which suits you.
+```json
+{
+  "farmer_ref": "KK-ID001",
+  "batches": [
+    {
+      "batch_id": "01-12-2026 KK-ID001",
+      "stage": "RECEIVED",
+      "collection_center": "Kirkir",
+      "weight_kg": 45,
+      "delivered_at": "2026-12-01T07:55:00.000Z",
+      "updated_at": "2026-12-01T09:02:00.000Z",
+      "explorer_url": "https://stellar.expert/explorer/testnet/tx/5d1e…9a0b"
+    }
+  ],
+  "pending_proposals": [
+    {
+      "proposal_id": "7a2b3c4d-5e6f-4a1b-8c9d-0e1f2a3b4c5d",
+      "collection_center": "Kirkir",
+      "weight_kg": 30.5,
+      "delivered_at": "2026-12-03T08:10:00.000Z",
+      "expires_at": "2026-12-05T08:10:00.000Z"
+    }
+  ]
+}
+```
+
+- Up to 20 batches, newest first. `explorer_url` points to the batch's latest on-chain step.
+- `pending_proposals` also lets the bot catch up if it missed a `delivery.proposed` webhook.
+- An unknown `farmer_ref` answers `404` with `FARMER_NOT_FOUND`, in the same `error` format as the events.
+
+Stages, in order:
+
+| `stage` | Plain meaning for the farmer |
+|---|---|
+| `DELIVERED` | Delivered at the collection center and confirmed by the farmer |
+| `RECEIVED` | Weighed and received by the cooperative |
+| `WASHING` | Being washed |
+| `FERMENTATION` | Fermenting |
+| `DRYING` | Drying |
+| `STORAGE` | In the cooperative's store |
+| `IN_TRANSPORT_TO_UNION` | On its way to the union |
+| `PREPARED_WITH_EXPORTABLE_BAG` | Bagged for export |
+| `SOLD` | Sold |
+
+## Webhooks to VoiceLedger
+
+We `POST` one notification per request, as JSON, to the URL you give us for each environment.
+
+**Signing.** The same scheme as your requests, with our own headers and a separate webhook secret per environment:
+
+| Header | Value |
+|---|---|
+| `X-CofiBlocks-Timestamp` | Unix time in seconds when we signed it. |
+| `X-CofiBlocks-Signature` | `sha256=` + hex of `HMAC-SHA256(webhook_secret, "<timestamp>.POST.<path>.<raw body>")`, where `path` is the path (and query, if any) of your URL. |
+
+Reject a notification whose signature does not match or whose timestamp is more than 5 minutes off.
+
+**Delivery and retries.**
+
+- Answer any `2xx` within 10 seconds once you have stored the notification; do the slow work (messaging the farmer) afterwards.
+- Anything else, or no answer, and we retry the same notification (same `notification_id` and body, fresh signature) after about 1, 5, 15 and 60 minutes, then every hour for 24 hours.
+- Deduplicate by `notification_id`. The order is not guaranteed: for a batch, ignore an update older than the `updated_at` you already have.
+
+**Envelope:**
+
+```json
+{
+  "notification_id": "2c9e7f10-4b3a-4d5e-8f6a-1b2c3d4e5f60",
+  "type": "delivery.proposed",
+  "occurred_at": "2026-12-01T07:56:00Z",
+  "data": { }
+}
+```
+
+### `delivery.proposed` — required
+
+A collector recorded a delivery for this farmer. Ask the farmer to confirm it and send [`delivery.confirmation`](#deliveryconfirmation--implemented).
+
+```json
+{
+  "proposal_id": "0f6c1d2e-8b7a-4c3d-9e1f-2a3b4c5d6e7f",
+  "farmer_ref": "KK-ID001",
+  "collection_center": "Kirkir",
+  "weight_kg": 45,
+  "delivered_at": "2026-12-01T07:55:00.000Z",
+  "expires_at": "2026-12-03T07:55:00.000Z"
+}
+```
+
+`weight_kg` is the weight from the collection center's scale, up to 2 decimals. A farmer can have more than one proposal open, for example two deliveries on the same day.
+
+### `delivery.proposal_closed` — required
+
+The proposal can no longer be answered: stop asking the farmer about it.
+
+```json
+{
+  "proposal_id": "0f6c1d2e-8b7a-4c3d-9e1f-2a3b4c5d6e7f",
+  "farmer_ref": "KK-ID001",
+  "reason": "cancelled"
+}
+```
+
+`reason` is `cancelled` (the collector withdrew it, usually to correct it) or `expired` (no answer within 48 hours). An answer is never followed by this notification: the `delivery.confirmation` result already closes it.
+
+### `batch.updated` — optional to show the farmer
+
+A batch of this farmer changed stage. We send it when the batch is created, when the collector signs the weight (`RECEIVED`) and at every later stage. Telling the farmer is optional for the pilot; the same information is always available from [the farmer's batches](#a-farmers-batches--implemented).
+
+```json
+{
+  "batch_id": "01-12-2026 KK-ID001",
+  "farmer_ref": "KK-ID001",
+  "stage": "RECEIVED",
+  "collection_center": "Kirkir",
+  "weight_kg": 45,
+  "updated_at": "2026-12-01T09:02:00.000Z",
+  "tx_hash": "5d1e…9a0b",
+  "explorer_url": "https://stellar.expert/explorer/testnet/tx/5d1e…9a0b"
+}
+```
 
 ## What we need back from VoiceLedger
 
-1. **Languages:** which languages the bot supports today, for voice recognition and for text.
-2. **The technical contract:** acceptance of this document, or the changes you need.
-3. **The linking flow:** your proposal for the cooperative-assisted onboarding (see [Linking a farmer](#linking-a-farmer)).
-4. **Notifications:** webhook or polling.
-5. **Transcripts and audio:** whether you will send the transcript and/or a reference to the audio. We store them off chain as backup evidence.
-6. **A date for a joint test** of the bot against our staging.
+Already answered (thank you): the languages (Afaan Oromoo, Amharic and English, text and voice), the technical contract, the linking flow, webhooks for notifications, and transcript plus audio with every voice message.
+
+Still needed:
+
+1. **Webhook URL** for staging, and later for production.
+2. **Audio retention:** how long you keep the recordings, so the consent text can say it.
+3. **Joint test:** confirm the week of 7 December.
 
 ### Joint test
 
 The minimum test we would run together, with a real Telegram account and a farmer from a test list:
 
-1. Link a participant through the assisted onboarding.
+1. A facilitator links a participant with the one-time code.
 2. Record their consent.
 3. Run the agreed short farm questionnaire, verify that imported household/land/location data is not asked for again, and submit an additional answer or correction.
-4. Register a delivery, retry it with the same `event_id`, and check that it is recorded only once.
-5. Record the weight in the CofiBlocks web app and check that the farmer gets the confirmation.
+4. A collector records a delivery in the web app; the farmer gets it in the bot and confirms it. Send the confirmation twice and check that the batch is recorded only once.
+5. The collector records a second delivery and the farmer rejects it: nothing is recorded.
+6. The farmer asks where their coffee is and the bot answers with the batch's stage.
 
 ## Testing it locally (CofiBlocks)
 
@@ -438,4 +639,5 @@ With our backend running, we sign and send events exactly as the bot would:
 npm run voiceledger:send -- farmer.linked '{"coop_code":"KK","farmer_id":"ID001","telegram_user_id":"123456789"}'
 npm run voiceledger:send -- --status <event_id>
 npm run voiceledger:demo -- KK ID001 --center Kirkir --kg 45   # the whole journey, with Stellar Expert links
+npm run voiceledger:deliveries -- KK ID001                     # the delivery flow, with a local fake of your webhook
 ```

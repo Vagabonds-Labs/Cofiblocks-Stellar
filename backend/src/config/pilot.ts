@@ -108,3 +108,12 @@ export const MAX_ESTIMATED_KG = 2000;
 
 /** How far back a delivery's `occurred_at` may be (bot offline, retries). */
 export const MAX_DELIVERY_AGE_DAYS = 14;
+
+/** Largest weight a Collector may record for one delivery, in kg. */
+export const MAX_WEIGHT_KG = 5000;
+
+/**
+ * How long a delivery the Collector recorded waits for the farmer's answer in
+ * the bot before it expires.
+ */
+export const PROPOSAL_TTL_HOURS = 48;

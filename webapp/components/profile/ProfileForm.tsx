@@ -17,16 +17,21 @@ export function ProfileForm({
 }) {
   return (
     <section
-      className="surface-card p-5 sm:p-6"
+      className="min-w-0 rounded-[28px] border border-[#e0e5d9] bg-[#fffefb] p-5 sm:p-7"
       aria-labelledby="personal-details-title"
     >
-      <div className="flex items-center gap-2">
-        <UserIcon className="h-5 w-5 text-[#286b56]" aria-hidden="true" />
-        <h2 id="personal-details-title" className="text-lg font-bold">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#edf2e5] text-[#687e53]">
+          <UserIcon className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <h2
+          id="personal-details-title"
+          className="text-base font-bold tracking-tight text-[#2d432e]"
+        >
           {t('profile.dashboard.details_title')}
         </h2>
       </div>
-      <p className="mb-2 mt-1 text-sm text-[#5a6760]">
+      <p className="mb-2 mt-3 text-xs leading-relaxed text-[#68756a]">
         {t('profile.dashboard.details_description')}
       </p>
       <div className="divide-y divide-[#e5ebe6]">
@@ -38,7 +43,7 @@ export function ProfileForm({
             <div key={field} className="py-5 last:pb-0">
               <label
                 htmlFor={`profile-${field}`}
-                className="mb-2 block text-xs font-semibold text-[#5a6760]"
+                className="mb-2 block text-[11px] font-semibold text-[#78816f]"
               >
                 {t(`profile.label_${field}`)}
               </label>
@@ -86,7 +91,10 @@ export function ProfileForm({
                       className="btn-primary inline-flex items-center gap-2 text-sm"
                     >
                       {saving && (
-                        <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                        <ArrowPathIcon
+                          className="h-4 w-4 motion-safe:animate-spin"
+                          aria-hidden="true"
+                        />
                       )}
                       {t(
                         saving
@@ -107,7 +115,7 @@ export function ProfileForm({
               ) : (
                 <div className="flex items-center justify-between gap-3">
                   <p
-                    className={`min-w-0 break-words text-sm ${value ? 'text-[#18211d]' : 'text-[#68776d]'}`}
+                    className={`min-w-0 break-all text-sm font-medium ${value ? 'text-[#344a32]' : 'text-[#78816f]'}`}
                   >
                     {value || t('profile.dashboard.not_added')}
                   </p>
@@ -118,7 +126,7 @@ export function ProfileForm({
                     aria-label={t('profile.dashboard.edit_field', {
                       field: t(`profile.label_${field}`),
                     })}
-                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#286b56] transition hover:bg-[#eaf1ef] disabled:opacity-50"
+                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border border-[#e2e7d9] bg-[#f8f9f3] px-3 text-xs font-semibold text-[#5a744b] transition hover:bg-[#edf2e5] disabled:opacity-50"
                   >
                     <PencilSquareIcon className="h-4 w-4" aria-hidden="true" />
                     {t('profile.dashboard.edit')}

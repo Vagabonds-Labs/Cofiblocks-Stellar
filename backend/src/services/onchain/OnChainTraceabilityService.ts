@@ -3,7 +3,7 @@ import { Address, scValToNative, Transaction, TransactionBuilder, xdr } from '@s
 
 import { HttpException } from '@/exceptions/HttpException';
 import { ContractFactory, DEFAULT_VALIDITY_SECONDS, EventsClient, EventsParser, StellarClient } from '@/lib/StellarContracts';
-import { ROLES } from '@/lib/StellarContracts/types';
+import { ROLES, STAGES } from '@/lib/StellarContracts/types';
 import { isSameAddress, withAccountLock } from '@/lib/StellarContracts/utils';
 import { logger } from '@/lib/logger';
 
@@ -192,6 +192,39 @@ export function verifyReceptionRecorded(
         batch.history.some((r) => r.stage === 'RECEIVED' && isSameAddress(r.actor, collector) && r.data_hash === dataHash)
       );
     }
+  );
+}
+
+export function prepareAdvanceStage(actor: string, id: string, stage: STAGES, dataHash: string) {
+  return contracts.getTraceabilityService().advanceStage(actor, id, stage, dataHash);
+}
+
+export function verifyStageAdvanced(hash: string, id: string, stage: STAGES, actor: string, dataHash: string): Promise<void> {
+  return verifyTransaction(
+    `advance_stage ${id} ${stage}`,
+    hash,
+    (events) =>
+      events
+        .parseStageAdvanced()
+        .some((e) => e.id === id && e.stage === stage && isSameAddress(e.actor, actor) && e.data_hash === dataHash),
+    async () => {
+      const batch = await findBatch(id);
+      return !!batch?.history.some((r) => r.stage === stage && isSameAddress(r.actor, actor) && r.data_hash === dataHash);
+    }
+  );
+}
+
+export function prepareAttachDocument(actor: string, id: string, docHash: string) {
+  return contracts.getTraceabilityService().attachDocument(actor, id, docHash);
+}
+
+export function verifyDocumentAttached(hash: string, id: string, actor: string, docHash: string): Promise<void> {
+  return verifyTransaction(
+    `attach_document ${id}`,
+    hash,
+    (events) =>
+      events.parseDocumentAttached().some((e) => e.id === id && isSameAddress(e.actor, actor) && e.doc_hash === docHash),
+    async () => !!(await findBatch(id))?.documents.includes(docHash)
   );
 }
 

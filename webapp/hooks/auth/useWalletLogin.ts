@@ -55,7 +55,10 @@ export function useWalletLogin() {
       const { nonce, message } = await authService.requestNonce(connected)
       const signature = await walletService.signMessage(message, connected)
 
-      await authService.registerWallet(connected, signature, nonce)
+      await authService.registerWallet(connected, signature, nonce, 'stellar', undefined, {
+        method: 'wallet',
+        walletApp: walletService.selectedWalletApp(),
+      })
 
       setAddress(connected)
       setIsRegistered(true)

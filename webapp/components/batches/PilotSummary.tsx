@@ -106,7 +106,13 @@ export function PilotSummary({
 
   const eventText = (event: Summary['recent'][number]) =>
     event.stage === 'DELIVERED'
-      ? event.batch.estimatedKg != null
+      ? event.batch.confirmedKg != null
+        ? ts('event_delivered_confirmed', {
+            farmer: event.batch.farmerRef,
+            kg: number(event.batch.confirmedKg),
+            center: event.batch.collectionCenter.name,
+          })
+        : event.batch.estimatedKg != null
         ? ts('event_delivered_kg', {
             farmer: event.batch.farmerRef,
             kg: number(event.batch.estimatedKg),

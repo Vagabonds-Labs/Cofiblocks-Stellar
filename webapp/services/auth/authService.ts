@@ -1,5 +1,6 @@
 // services/authService.ts
 import { api } from '@/lib/api';
+import type { LoginMethod } from "./types";
 import { User } from './types';
 
 export class AuthService {
@@ -136,7 +137,9 @@ export class AuthService {
     signature: string,
     nonce: string,
     provider: "stellar" | "cavos" = "stellar",
-    signer?: string
+    signer?: string,
+    /** How the user signed in, shown on their profile (each method has its own wallet). */
+    login?: { method: LoginMethod; identity?: string | null; walletApp?: string | null }
   ) {
     const res = await api.post<{
       data: {
@@ -149,6 +152,11 @@ export class AuthService {
       nonce,
       provider,
       ...(signer && { signer }),
+      ...(login && {
+        login_method: login.method,
+        ...(login.identity && { login_identity: login.identity }),
+        ...(login.walletApp && { wallet_app: login.walletApp }),
+      }),
     });
 
     // Access token is set as HttpOnly cookie by backend

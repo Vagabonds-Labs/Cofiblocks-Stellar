@@ -114,7 +114,26 @@
       "eyebrow": "COFIBLOCKS TRACEABILITY",
       "greeting": "Hello, {name}",
       "login": "Log in"
-    }
+    },
+    "login": {
+      "label": "You sign in with",
+      "email": "Email (via Cavos)",
+      "telegram": "Telegram (via Cavos)",
+      "wallet": "Your own Stellar wallet",
+      "wallet_named": "Your {wallet} wallet",
+      "cavos_unknown": "Telegram or email (via Cavos)",
+      "last_login": "Last sign-in: {date}",
+      "one_wallet_per_method": "Always use the same login method. Each one (email, Telegram or wallet) has its own wallet, so a different method opens a different account, without your role or history."
+    },
+    "overview": {
+      "back": "Back to the cooperatives",
+      "subtitle": "Your balance, personal details and account access, in one place.",
+      "identity": "Your profile",
+      "unnamed": "Your profile",
+      "unassigned": "Not assigned",
+      "member_since": "Member since {date}"
+    },
+    "button_save_small": "Save"
   },
   "api_errors": {
     "VALIDATION_ERROR": "The input is invalid",
@@ -200,7 +219,8 @@
     "INDUSTRY_MANAGER": "Industry Manager",
     "STORE_KEEPER": "Store Keeper",
     "EXPORT_MANAGER": "Export Manager",
-    "none": "No role"
+    "none": "No role",
+    "admin": "CofiBlocks admin"
   },
   "tasks": {
     "COLLECTOR": [
@@ -332,7 +352,17 @@
     "retry": "Try again",
     "balance": "Balance:",
     "view_account": "View on Stellar Expert",
-    "view_funding": "View funding transaction"
+    "view_funding": "View funding transaction",
+    "current_balance": "Current balance",
+    "balance_unavailable": "Balance unavailable",
+    "testnet_hint": "Pilot balance on Stellar Testnet.",
+    "mainnet_hint": "Your balance on the Stellar network.",
+    "refresh_error": "Could not refresh. Showing the last retrieved balance.",
+    "refresh_balance": "Refresh balance",
+    "address": "Stellar address",
+    "copy_address": "Copy address",
+    "address_copied": "Address copied",
+    "copy_error": "Could not copy. You can select and copy the address manually."
   },
   "stages": {
     "DELIVERED": "Delivered",
@@ -376,16 +406,19 @@
       "SOLD": "Sold"
     },
     "filter_coop": "Cooperative",
-    "all_coops": "All cooperatives"
+    "all_coops": "All cooperatives",
+    "export_csv": "Export CSV",
+    "exporting": "Exporting…"
   },
   "pending": {
     "title": "Deliveries to weigh",
-    "subtitle": "Farmers recorded these deliveries at your center through the bot. Weigh them and photograph the receipt.",
+    "subtitle": "The farmer confirmed these deliveries in the bot. Sign the weight and photograph the receipt.",
     "count": "{count} pending",
     "empty": "Nothing to weigh right now.",
     "delivered": "Delivered {time} at {center}",
     "estimated": "about {kg} kg",
-    "weigh": "Record weight"
+    "weigh": "Record weight",
+    "confirmed": "{kg} kg confirmed by the farmer"
   },
   "reception": {
     "title": "Record weight and receipt",
@@ -407,7 +440,8 @@
     "done_text": "The batch is now Received. The farmer will be notified.",
     "view_tx": "See the transaction on Stellar",
     "error_generic": "Something went wrong. Try again.",
-    "error_cancelled": "You cancelled the signature. Nothing was recorded."
+    "error_cancelled": "You cancelled the signature. Nothing was recorded.",
+    "weight_confirmed": "The farmer confirmed this weight in the bot. It is the one recorded on Stellar."
   },
   "summary": {
     "title": "The pilot at a glance",
@@ -431,7 +465,8 @@
     "event_delivered": "{farmer} delivered coffee at {center}",
     "event_received": "{kg} kg weighed at {center}",
     "event_stage": "{batch} moved to a new stage",
-    "view_tx": "Transaction"
+    "view_tx": "Transaction",
+    "event_delivered_confirmed": "{farmer} delivered {kg} kg at {center}"
   },
   "dashboard": {
     "title": "Three cooperatives. One coffee journey.",
@@ -465,5 +500,122 @@
     "explore": "Explore cooperative",
     "activity": "Around the cooperatives",
     "activity_hint": "Latest recorded steps · all cooperatives"
+  },
+  "deliveries": {
+    "title": "Deliveries at the collection center",
+    "subtitle": "Record each delivery with the weight on the scale. The farmer confirms it in the bot, and only then is the batch created on Stellar.",
+    "record": "Record delivery",
+    "empty": "No deliveries recorded yet.",
+    "waiting_count": "{count} waiting for the farmer",
+    "kg": "{kg} kg",
+    "waiting_until": "Waiting for the farmer to confirm in the bot, until {time}.",
+    "confirmed_batch": "Confirmed by the farmer: batch {batch}. Sign the weight below.",
+    "cancel": "Cancel",
+    "status": {
+      "PENDING": "Waiting",
+      "CONFIRMED": "Confirmed",
+      "REJECTED": "Rejected",
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Expired"
+    },
+    "status_hint": {
+      "PENDING": "Waiting for the farmer to confirm in the bot.",
+      "CONFIRMED": "Confirmed by the farmer. The batch is being recorded on Stellar.",
+      "REJECTED": "The farmer said it is not right. Check it with them and record it again.",
+      "CANCELLED": "You cancelled it. Nothing was recorded.",
+      "EXPIRED": "The farmer did not answer in time. Record it again if it is still needed."
+    },
+    "dialog_title": "Record a delivery",
+    "dialog_subtitle": "The farmer will be asked to confirm it in the bot.",
+    "close": "Close",
+    "farmer_label": "Farmer",
+    "farmer_search": "Search by name or ID",
+    "no_farmers": "No farmers found in your cooperative.",
+    "not_linked": "Has not linked the bot yet, so they cannot confirm.",
+    "not_consented": "Has not given consent in the bot yet.",
+    "center_label": "Collection center",
+    "weight_label": "Weight on the scale",
+    "when_label": "Delivered at",
+    "confirm_hint": "Nothing is recorded on Stellar until the farmer confirms. You can cancel it while it waits.",
+    "submit": "Send to the farmer to confirm",
+    "sending": "Sending…",
+    "sent": "{kg} kg sent to the farmer",
+    "sent_text": "{farmer} will be asked in the bot to confirm it. When they do, it appears in Deliveries to weigh for you to sign the weight.",
+    "error_generic": "Something went wrong. Try again."
+  },
+  "batch": {
+    "back": "All batches",
+    "batch_label": "Batch",
+    "not_found": "This batch does not exist.",
+    "farmer": "Farmer",
+    "cooperative": "Cooperative",
+    "center": "Collection center",
+    "delivered": "Delivered",
+    "weight": "Weight received",
+    "confirmed_kg": "Confirmed by the farmer",
+    "verify_checking": "Checking on Stellar…",
+    "verified": "Verified on Stellar",
+    "verified_text": "{steps} steps and {docs} documents match what the contract holds.",
+    "not_verified": "Does not match Stellar",
+    "not_verified_text": "Something stored here differs from the contract. Report it to the project team.",
+    "verify_error": "Could not reach Stellar to check. Try again.",
+    "verify_again": "Check again",
+    "actions_title": "What you can do",
+    "advance_to": "Move to {stage}",
+    "stage_in_flight": "A stage change is being confirmed on Stellar.",
+    "attach": "Attach a document",
+    "timeline_title": "History",
+    "by": "by {who}",
+    "by_farmer_agent": "the farmer, through the bot",
+    "weight_value": "{kg} kg",
+    "record_mismatch": "The stored record no longer matches its hash on Stellar.",
+    "view_tx": "Transaction",
+    "view_tx_long": "See the transaction on Stellar",
+    "documents_title": "Documents",
+    "documents_empty": "No documents yet.",
+    "document_pending": "Not signed yet",
+    "document_sign": "Sign and attach",
+    "download": "Download {name}",
+    "kinds": {
+      "receipt": "Receipt",
+      "certificate": "Certificate",
+      "quality": "Quality report",
+      "sale": "Sale document",
+      "other": "Other"
+    },
+    "my_title": "Batches waiting for you",
+    "my_subtitle": "Your role moves these batches to their next stage.",
+    "my_count": "{count} waiting",
+    "my_empty": "Nothing waiting for you right now.",
+    "open": "Open",
+    "close": "Close",
+    "error_generic": "Something went wrong. Try again.",
+    "error_cancelled": "You cancelled the signature. Nothing was recorded.",
+    "step_uploading": "Uploading…",
+    "step_preparing": "Preparing…",
+    "step_signing": "Confirm in your wallet…",
+    "step_sending": "Recording on Stellar…",
+    "stage_dialog": {
+      "title": "Move to the next stage",
+      "stage_label": "Stage",
+      "weight_label": "Weight after this stage (optional)",
+      "weight_hint": "For example, after drying or bagging.",
+      "notes_label": "Notes (optional)",
+      "immutable_hint": "Each stage is recorded once on Stellar and cannot be undone.",
+      "submit": "Sign and record",
+      "done": "The batch is now {stage}"
+    },
+    "doc_dialog": {
+      "title": "Attach a document",
+      "kind_label": "Type of document",
+      "file_label": "File",
+      "file_choose": "Choose a file",
+      "file_hint": "PDF, photo, Excel or Word, up to 10 MB.",
+      "too_large": "The file is larger than 10 MB.",
+      "uploaded_hint": "Already uploaded. Sign to attach it to the batch.",
+      "hash_hint": "The file stays private; its fingerprint (hash) goes on Stellar so anyone can check it was not changed.",
+      "submit": "Upload and sign",
+      "done": "Document attached"
+    }
   }
 }

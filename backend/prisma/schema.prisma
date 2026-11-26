@@ -14,38 +14,49 @@ datasource db {
 /// CofiBlocks admins. Farmers are not `User`s: they use the bot and live in
 /// `Farmer`.
 model User {
-  id                    String            @id @default(uuid())
+  id                    String             @id @default(uuid())
   name                  String?
   email                 String?
   /// Telegram username, if they signed in with Telegram (through Cavos).
-  telegramUsername      String?           @map("telegram_username")
-  createdAt             DateTime          @default(now()) @map("created_at")
-  updatedAt             DateTime          @updatedAt @map("updated_at")
-  isAdmin               Boolean           @default(false) @map("is_admin")
-  walletAddress         String?           @unique @map("wallet_address")
-  walletProvider        String?           @map("wallet_provider")
+  telegramUsername      String?            @map("telegram_username")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  isAdmin               Boolean            @default(false) @map("is_admin")
+  walletAddress         String?            @unique @map("wallet_address")
+  walletProvider        String?            @map("wallet_provider")
+  /// How this account signs in: `email` or `telegram` (both through Cavos)
+  /// or `wallet` (their own Stellar wallet). Each way of signing in has its
+  /// own wallet, so a different method means a different account.
+  loginMethod           String?            @map("login_method")
+  /// What identifies that login: the email used with Cavos, or the Telegram
+  /// name Cavos reports. As reported by the web app at sign-in; display only.
+  loginIdentity         String?            @map("login_identity")
+  /// Own wallets only: which app signed (freighter, lobstr, xbull…).
+  walletApp             String?            @map("wallet_app")
+  lastLoginAt           DateTime?          @map("last_login_at")
   /// Role in the pilot. `null` until an admin assigns one.
   role                  StaffRole?
-  organizationId        String?           @map("organization_id")
+  organizationId        String?            @map("organization_id")
   /// Coffee Collectors only: their collection center.
-  collectionCenterId    String?           @map("collection_center_id")
+  collectionCenterId    String?            @map("collection_center_id")
   /// Transaction that wrote the role to the contract.
-  roleTx                String?           @map("role_tx")
+  roleTx                String?            @map("role_tx")
   /// Testnet XLM funding (faucet for Cavos wallets, Friendbot for own
   /// wallets). `fundTx` is stored before the payment is sent, with the
   /// transaction's expiry; `fundedAt` is set once it is confirmed.
-  fundTx                String?           @map("fund_tx")
-  fundTxValidUntil      DateTime?         @map("fund_tx_valid_until")
-  fundedAt              DateTime?         @map("funded_at")
-  organization          Organization?     @relation(fields: [organizationId], references: [id])
-  collectionCenter      CollectionCenter? @relation(fields: [collectionCenterId], references: [id])
-  notificationsReceived Notification[]    @relation("NotificationReceiver")
-  notificationsSent     Notification[]    @relation("NotificationSender")
+  fundTx                String?            @map("fund_tx")
+  fundTxValidUntil      DateTime?          @map("fund_tx_valid_until")
+  fundedAt              DateTime?          @map("funded_at")
+  organization          Organization?      @relation(fields: [organizationId], references: [id])
+  collectionCenter      CollectionCenter?  @relation(fields: [collectionCenterId], references: [id])
+  notificationsReceived Notification[]     @relation("NotificationReceiver")
+  notificationsSent     Notification[]     @relation("NotificationSender")
   refreshTokens         RefreshToken[]
   sessions              Session[]
-  batchesReceived       Batch[]           @relation("BatchReceivedBy")
-  batchEvents           BatchEvent[]      @relation("BatchEventActor")
-  documentsUploaded     Document[]        @relation("DocumentUploadedBy")
+  batchesReceived       Batch[]            @relation("BatchReceivedBy")
+  deliveryProposals     DeliveryProposal[] @relation("DeliveryProposalCreatedBy")
+  batchEvents           BatchEvent[]       @relation("BatchEventActor")
+  documentsUploaded     Document[]         @relation("DocumentUploadedBy")
 
   @@map("users")
 }
@@ -128,21 +139,23 @@ model Organization {
   farmers           Farmer[]
   users             User[]
   batches           Batch[]
+  deliveryProposals DeliveryProposal[]
 
   @@map("organizations")
 }
 
 model CollectionCenter {
-  id             String       @id @default(uuid())
-  name           String
+  id                String             @id @default(uuid())
+  name              String
   /// Numeric ID used by the contract (`collection_center`).
-  chainId        Int          @unique @map("chain_id")
-  organizationId String       @map("organization_id")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  farmers        Farmer[]
-  users          User[]
-  batches        Batch[]
+  chainId           Int                @unique @map("chain_id")
+  organizationId    String             @map("organization_id")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  farmers           Farmer[]
+  users             User[]
+  batches           Batch[]
+  deliveryProposals DeliveryProposal[]
 
   @@unique([organizationId, name])
   @@map("collection_centers")
@@ -195,6 +208,7 @@ model Farmer {
   profileVersions      FarmerProfileVersion[]
   plots                Plot[]
   batches              Batch[]
+  deliveryProposals    DeliveryProposal[]
 
   @@unique([organizationId, coopFarmerId])
   @@map("farmers")
@@ -293,6 +307,8 @@ model Batch {
   stage                 BatchStage        @default(DELIVERED)
   /// Integration message that created it (farmer deliveries).
   integrationEventId    String?           @unique @map("integration_event_id")
+  /// Collector-recorded delivery the farmer confirmed (the pilot's flow).
+  deliveryProposalId    String?           @unique @map("delivery_proposal_id")
   // Delivery, as reported by the farmer.
   deliveredAt           DateTime          @map("delivered_at")
   estimatedKg           Decimal?          @map("estimated_kg") @db.Decimal(10, 2)
@@ -312,6 +328,11 @@ model Batch {
   receptionTxValidUntil DateTime?         @map("reception_tx_valid_until")
   receivedAt            DateTime?         @map("received_at")
   receivedById          String?           @map("received_by_id")
+  /// Stage change in flight (`advance_stage`): its transaction and the stage
+  /// record it writes. Cleared once it is confirmed and stored as a BatchEvent.
+  stageTx               String?           @map("stage_tx")
+  stageTxValidUntil     DateTime?         @map("stage_tx_valid_until")
+  stageTxData           Json?             @map("stage_tx_data")
   createdAt             DateTime          @default(now()) @map("created_at")
   updatedAt             DateTime          @updatedAt @map("updated_at")
   farmer                Farmer            @relation(fields: [farmerId], references: [id])
@@ -319,6 +340,7 @@ model Batch {
   collectionCenter      CollectionCenter  @relation(fields: [collectionCenterId], references: [id])
   receivedBy            User?             @relation("BatchReceivedBy", fields: [receivedById], references: [id])
   integrationEvent      IntegrationEvent? @relation(fields: [integrationEventId], references: [id])
+  deliveryProposal      DeliveryProposal? @relation(fields: [deliveryProposalId], references: [id])
   events                BatchEvent[]
   documents             Document[]
 
@@ -362,6 +384,8 @@ model Document {
   sha256       String
   uploadedById String?   @map("uploaded_by_id")
   txHash       String?   @map("tx_hash")
+  txValidUntil DateTime? @map("tx_valid_until")
+  /// Set once `attach_document` is confirmed on chain.
   attachedAt   DateTime? @map("attached_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   batch        Batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
@@ -394,27 +418,28 @@ model BotConversation {
 /// content is rejected, and every on-chain action can be traced back to the
 /// message that caused it.
 model IntegrationEvent {
-  id          String                 @id @default(uuid())
+  id             String                 @id @default(uuid())
   /// Who sent it, e.g. `voiceledger`.
-  source      String
+  source         String
   /// The sender's ID for the event; unique per source.
-  eventId     String                 @map("event_id")
-  type        String
+  eventId        String                 @map("event_id")
+  type           String
   /// SHA-256 of the event's type and data (canonical JSON), to detect a
   /// reused `eventId`.
-  payloadHash String                 @map("payload_hash")
-  payload     Json
-  status      IntegrationEventStatus @default(PROCESSING)
+  payloadHash    String                 @map("payload_hash")
+  payload        Json
+  status         IntegrationEventStatus @default(PROCESSING)
   /// The response returned to the sender, replayed on retries.
-  httpStatus  Int?                   @map("http_status")
-  response    Json?
-  txHash      String?                @map("tx_hash")
-  errorCode   String?                @map("error_code")
-  createdAt   DateTime               @default(now()) @map("created_at")
-  updatedAt   DateTime               @updatedAt @map("updated_at")
-  consent     FarmerConsent?
-  profile     FarmerProfileVersion?
-  batch       Batch?
+  httpStatus     Int?                   @map("http_status")
+  response       Json?
+  txHash         String?                @map("tx_hash")
+  errorCode      String?                @map("error_code")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  consent        FarmerConsent?
+  profile        FarmerProfileVersion?
+  batch          Batch?
+  deliveryAnswer DeliveryProposal?
 
   @@unique([source, eventId])
   @@map("integration_events")
@@ -471,4 +496,76 @@ enum NotificationLevel {
   WARNING
   INFO
   ERROR
+}
+
+enum DeliveryProposalStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+/// A delivery a Collector recorded at the collection center, waiting for the
+/// farmer to confirm it in the VoiceLedger bot. Only a confirmation creates
+/// the batch (on chain, signed by the farmer agent). Its `id` is the
+/// `proposal_id` VoiceLedger sees.
+model DeliveryProposal {
+  id                 String                 @id @default(uuid())
+  farmerId           String                 @map("farmer_id")
+  organizationId     String                 @map("organization_id")
+  collectionCenterId String                 @map("collection_center_id")
+  /// Weight on the collection center's scale.
+  weightKg           Decimal                @map("weight_kg") @db.Decimal(10, 2)
+  deliveredAt        DateTime               @map("delivered_at")
+  status             DeliveryProposalStatus @default(PENDING)
+  expiresAt          DateTime               @map("expires_at")
+  createdById        String                 @map("created_by_id")
+  /// The farmer's answer: the first integration message that gave it.
+  answerEventId      String?                @unique @map("answer_event_id")
+  answeredAt         DateTime?              @map("answered_at")
+  transcript         String?
+  audioRef           String?                @map("audio_ref")
+  /// When it stopped waiting for an answer (answered, cancelled or expired).
+  closedAt           DateTime?              @map("closed_at")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+  farmer             Farmer                 @relation(fields: [farmerId], references: [id])
+  organization       Organization           @relation(fields: [organizationId], references: [id])
+  collectionCenter   CollectionCenter       @relation(fields: [collectionCenterId], references: [id])
+  createdBy          User                   @relation("DeliveryProposalCreatedBy", fields: [createdById], references: [id])
+  answerEvent        IntegrationEvent?      @relation(fields: [answerEventId], references: [id])
+  batch              Batch?
+
+  @@index([organizationId, status])
+  @@index([farmerId, status])
+  @@index([status, expiresAt])
+  @@map("delivery_proposals")
+}
+
+enum WebhookStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
+/// Outbox of notifications to VoiceLedger's webhook. A worker sends each one
+/// and retries it for 24 hours; its `id` is the `notification_id`.
+model WebhookNotification {
+  id            String        @id @default(uuid())
+  /// Makes enqueueing idempotent, e.g. `batch.updated:<tx hash>`.
+  dedupeKey     String        @unique @map("dedupe_key")
+  type          String
+  /// The whole envelope, as sent.
+  body          Json
+  status        WebhookStatus @default(PENDING)
+  attempts      Int           @default(0)
+  nextAttemptAt DateTime      @default(now()) @map("next_attempt_at")
+  lastError     String?       @map("last_error")
+  deliveredAt   DateTime?     @map("delivered_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@index([status, nextAttemptAt])
+  @@map("webhook_notifications")
 }

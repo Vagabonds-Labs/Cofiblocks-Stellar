@@ -2,7 +2,7 @@
 
 REST API built with Express + Prisma/Postgres. It is the core of the system: it authenticates users, stores private data, builds and submits transactions to the `traceability` contract on Stellar, and receives what farmers record through the VoiceLedger bot.
 
-> 🚧 **Status:** login, on-chain roles, farmer upload, notifications, the testnet faucet, the farmer-agent wallet and the VoiceLedger `farmer.linked` event work against the v1 contract on testnet. The rest of the VoiceLedger events and everything related to batches are under construction. See [What is missing](#what-is-missing).
+> 🚧 **Status:** login, on-chain roles, farmer upload, notifications, the testnet faucet, the farmer-agent wallet, the VoiceLedger integration (events, delivery confirmation, webhooks) batch creation and reception, the later stages, documents, "Verified on Stellar" and the CSV export work against the v1 contract on testnet. See [What is missing](#what-is-missing).
 
 ## What it does
 
@@ -93,7 +93,9 @@ npm run admin:grant -- G…
 | `VOICELEDGER_WEBHOOK_SECRET` | Shared secret for VoiceLedger's HMAC signatures. Empty = the integration answers 503. |
 | `STELLAR_RPC_URL`, `STELLAR_HORIZON_URL` | Optional. Defaults to the network's public endpoints. |
 | `STELLAR_TRACEABILITY_ADDRESS` | Optional. Overrides the contract address in `src/lib/StellarContracts/deployments.ts`. |
-| `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` | Files (receipts, photos, documents). |
+| `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` | Supabase Storage (public bucket for images such as farm logos). |
+| `SUPABASE_DOCUMENTS_BUCKET` | Private bucket for batch documents (default `batch-documents`; created on the first upload if missing). Files are served only through the API. |
+| `DOCUMENTS_DIR` | Development only: without Supabase, documents are kept in this folder (default `uploads/documents`, ignored by git). In production the backend refuses to store documents without Supabase. |
 | `TELEGRAM_*` | Only for our own bot, which is no longer used. |
 
 ### Scripts
@@ -108,6 +110,8 @@ npm run admin:grant -- G…
 | `npm run admin:grant -- G…` | Grants admin rights. |
 | `npm run chain:sync-roles` | Writes the roles stored in the database to the current contract (after a redeploy). |
 | `npm run voiceledger:send -- <type> '<data>'` | Sends a signed event exactly as VoiceLedger's bot would (testing and demos). |
+| `npm run voiceledger:deliveries -- KK ID001` | Whole delivery flow on testnet (see [VoiceLedger integration](#voiceledger-integration)). |
+| `npm run batch:stages -- "<batch number>"` | Takes a `RECEIVED` batch through every stage with fresh test staff, checks the rejections (wrong role, other cooperative, skipped or repeated stage), attaches two documents, then checks "Verified on Stellar", the CSV and the `batch.updated` webhooks. Testnet. |
 
 ## Endpoints
 
@@ -134,11 +138,23 @@ All under `/api`.
 | `POST /notifications` | admin | Creates a notification. |
 | `GET /wallet` | session | The user's Stellar account: whether it exists, XLM balance and funding transaction. |
 | `POST /wallet/fund` | session | Sends testnet XLM to the user's account, once. The account must exist (`409 ACCOUNT_NOT_DEPLOYED`). |
-| `GET /batches` | session | Every batch (pseudonymous data, already public on Stellar), newest first, with counts per stage. Filters: `stage`, `collection_center_id`, `organization_id`, `search`. |
+| `GET /batches` | session | Every batch (pseudonymous data, already public on Stellar), newest first, with counts per stage. Filters: `stage`, `collection_center_id`, `organization_id`, `search`, and `for_me=true` (the batches the viewer's role moves forward now). |
+| `GET /batches/export.csv` | session | The batches (same filters) as CSV: one row per batch with the date and transaction of each step. Pseudonymous IDs only. |
 | `GET /batches/summary` | session | The pilot at a glance: farmers linked, batches per stage, kg received, per cooperative, and the latest on-chain steps. |
-| `GET /batches/:id` | session | A batch with its history; each step says whether its stored record still matches the hash on chain. |
+| `GET /batches/:id` | session | A batch with its history and documents; each step says whether its stored record still matches the hash on chain. Also `nextStages` (where the viewer can move it now) and `canAttach`. |
+| `GET /batches/:id/verify` | session | "Verified on Stellar": reads the batch from the contract and checks every stored step (record hash, stage, signer), every attached document and the current stage. |
+| `POST /batches/:id/stage/prepare` | Industry Manager, Store Keeper, Export Manager | Step 1 of a stage change: returns the `advance_stage` transaction to sign. Body: `stage`, optional `weight_kg` and `notes`. Same rules as the contract: role per stage, own cooperative (any for the Export Manager), only forward, Fermentation optional. |
+| `POST /batches/:id/stage` | same | Step 2: the same body plus `signed_xdr`. Exactly once, like the reception; VoiceLedger gets `batch.updated`. |
+| `POST /batches/:id/documents` | any role of the batch's cooperative, Export Manager | Uploads a file (multipart: `file`, `kind` = `receipt`, `certificate`, `quality`, `sale` or `other`; PDF, image, CSV, Excel or Word; 10 MB). Stored, not attached yet. |
+| `POST /batches/:id/documents/:documentId/prepare` | the uploader | The `attach_document` transaction (the file's SHA-256) to sign. |
+| `POST /batches/:id/documents/:documentId/attach` | the uploader | The signed transaction; the document is attached once it is confirmed. |
+| `GET /batches/:id/documents/:documentId/file` | staff, admin | The file. Its SHA-256 is checked against the stored one before it is served. |
 | `POST /batches/:id/reception/prepare` | Collector | Step 1 of weight and receipt: returns the `record_reception` transaction to sign. Body: `weight_kg`, `receipt_sha256`, `notes`. |
-| `POST /batches/:id/reception` | Collector | Step 2: the same body plus `signed_xdr`. Checks it is exactly the prepared call, sends it with fee-bump and moves the batch to `RECEIVED`. |
+| `POST /batches/:id/reception` | Collector | Step 2: the same body plus `signed_xdr`. Checks it is exactly the prepared call, sends it with fee-bump and moves the batch to `RECEIVED`. A batch the farmer confirmed takes only the confirmed weight (`WEIGHT_MISMATCH` otherwise). |
+| `GET /deliveries/farmers` | Collector | Farmers of their cooperative for the delivery form, with whether they linked the bot and consented. `search` filters by name or ID. |
+| `GET /deliveries` | Collector, admin | The cooperative's latest recorded deliveries and the farmer's answer (`status`). |
+| `POST /deliveries` | Collector | Records a delivery (`farmer_id`, `weight_kg`, optional `collection_center_id`, `delivered_at`). Nothing goes on chain: the farmer is asked to confirm it in the bot. |
+| `POST /deliveries/:id/cancel` | Collector | Withdraws a delivery still waiting for the farmer. |
 | `POST /integrations/voiceledger/events` | VoiceLedger (HMAC) | One event from the farmers' bot. |
 | `GET /integrations/voiceledger/events/:eventId` | VoiceLedger (HMAC) | Status of an event. |
 | `GET /config/stellar` | anyone | Network, passphrase, contract address and faucet address. |
@@ -159,7 +175,12 @@ Farmers do not use the web app: they talk to a **Telegram voice bot built and ru
 | `farmer.linked` | `register_farmer` | Implemented |
 | `farmer.consent` | `record_consent` (only for an acceptance with every declaration) | Implemented |
 | `farmer.profile` | `set_profile`; every edit is a new version with its own hash | Implemented |
-| `delivery.created` | `create_batch`; we generate the batch number `DD-MM-YYYY <farmer_ref>` (`/2`, `/3`… for more deliveries that day) | Implemented |
+| `delivery.confirmation` | The farmer's answer to a delivery the Collector recorded. A yes runs `create_batch`; we generate the batch number `DD-MM-YYYY <farmer_ref>` (`/2`, `/3`… for more deliveries that day) | Implemented |
+| `delivery.created` | `create_batch` for a delivery the farmer reported in the bot. Not part of the pilot's flow; kept for the simulator and as a fallback | Implemented |
+
+**Deliveries.** In the pilot the Collector records each delivery in the web app (`POST /deliveries`). We notify VoiceLedger (`delivery.proposed`), the bot asks the farmer, and only their confirmation (`delivery.confirmation`) creates the batch on chain, signed by the farmer agent. A rejected, cancelled or expired (48 h) delivery records nothing. Then the Collector signs the weight the farmer confirmed (`record_reception`).
+
+**Webhooks to VoiceLedger.** `delivery.proposed`, `delivery.proposal_closed` and `batch.updated` go through an outbox (`webhook_notifications`): they are enqueued in the same transaction as the change, and a worker in the API process (`src/services/app/IntegrationWorker.ts`, every 15 s) sends them signed with `VOICELEDGER_NOTIFY_SECRET` to `VOICELEDGER_NOTIFY_URL` and retries for 24 hours. The same worker expires unanswered deliveries. Without a URL the notifications stay queued. VoiceLedger reads a farmer's batches with the signed `GET /integrations/voiceledger/farmers/:farmerRef/batches`.
 
 Retries with the same `event_id` get the stored answer and never write on chain twice; the same `event_id` with different content is rejected. Every farmer-agent write stores its transaction hash before sending it, so an interrupted write is reconciled with the network instead of being sent again (`src/services/onchain/ensureOnChain.ts`). The hashes on chain are SHA-256 of the canonical JSON of the off-chain record (`src/utils/canonicalJson.ts`), so anyone with the record can recompute them.
 
@@ -167,7 +188,7 @@ Pilot settings still being confirmed (consent texts, the fachasa → hectare fac
 
 **SOW evidence.** `npm run sow:evidence -- KK ID001 --out ../docs/sow-evidence.md` produces the three on-chain proofs of deliverable 2 on testnet and writes the table of transactions ([last run](../docs/sow-evidence.md)): a farmer creates a batch through the VoiceLedger API; a Collector records weight and receipt (`ReceptionService`: the backend prepares the transaction, the Collector's key signs it, the backend checks it is exactly the prepared call and sends it with fee-bump — the same path the web app will use with Cavos); and two unauthorized attempts sent without simulation, so the contract rejects them on chain (`#4 WRONG_ORGANIZATION`, `#13 RECEPTION_ALREADY_RECORDED`). It needs the backend running on the same database and creates two throwaway Collector accounts per run.
 
-**Simulator.** With the backend running, `npm run voiceledger:demo -- KK ID001` runs a farmer's whole journey (link → consent → profile → delivery → retry) through the signed API and prints the Stellar Expert link of each step. `npm run voiceledger:send` sends a single event. The OpenAPI description is [`docs/voiceledger-openapi.yaml`](../docs/voiceledger-openapi.yaml). In the other direction, we will notify VoiceLedger (signed webhook) when the Collector records the weight or the batch changes stage; the format is being agreed with VoiceLedger.
+**Simulator.** With the backend running, `npm run voiceledger:demo -- KK ID001` runs a farmer's whole journey (link → consent → profile → delivery → retry) through the signed API and prints the Stellar Expert link of each step. `npm run voiceledger:send` sends a single event. `npm run voiceledger:deliveries -- KK ID001` tests the whole delivery flow on testnet (a Collector records, the farmer confirms, rejects or the Collector cancels, the weight is signed, the bot reads the batches), with a local fake of VoiceLedger's webhook that checks every signature; start the backend with launch config `backend-local-db`, which points the webhooks at it. The OpenAPI description is [`docs/voiceledger-openapi.yaml`](../docs/voiceledger-openapi.yaml).
 
 **Our own bot (`src/bot/`)** is a week-0 prototype from before VoiceLedger took over the bot. It validates the farmer's ID against the list. It is no longer used: it stays off while `TELEGRAM_BOT_TOKEN` is empty.
 
@@ -176,5 +197,5 @@ Pilot settings still being confirmed (consent texts, the fachasa → hectare fac
 By sprint week (details in the [plan](../docs/implementation-plan.md)):
 
 - **Staging** (postponed): deploy and the cross-domain cookie setup (review finding R6).
-- **Week 3:** endpoints for reception (weight and receipt), stage changes, documents, batch history and CSV export; notifications to VoiceLedger.
+- **Week 3:** the farmers CSV for staff (optional in the plan); photos per stage (a document can be attached instead).
 - **Week 4:** permission tests for every role against every endpoint, in CI.

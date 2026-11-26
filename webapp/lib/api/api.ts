@@ -104,6 +104,35 @@ async function request<T>(
   return response.json();
 }
 
+/**
+ * A file from the API (CSV, a document), with the same cookie and refresh
+ * handling as `request`, and the file name from `Content-Disposition`.
+ */
+async function download(endpoint: string, retry = false): Promise<{ blob: Blob; fileName: string | null }> {
+  const response = await fetch(apiUrl(endpoint), { credentials: "include" });
+  if (response.status === 401 && !retry && (await refreshAccessToken())) {
+    return download(endpoint, true);
+  }
+  if (!response.ok) {
+    throw await parseError(response);
+  }
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^";]+)"?/i.exec(disposition);
+  return { blob: await response.blob(), fileName: match ? decodeURIComponent(match[1]) : null };
+}
+
+/** Saves a downloaded file in the browser. */
+export function saveBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /* ---------------------------------------------
    Error Parser
 ---------------------------------------------- */
@@ -157,6 +186,8 @@ export const api = {
 
   delete: <T>(endpoint: string, options?: RequestInit) =>
     request<T>(endpoint, { ...options, method: "DELETE" }),
+
+  download,
 
   // Token management is no longer needed - cookies are handled automatically
   setToken: () => {},

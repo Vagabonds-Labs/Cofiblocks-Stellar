@@ -114,7 +114,26 @@
       "eyebrow": "COFIBLOCKS TRACEABILITY",
       "greeting": "Akkam, {name}",
       "login": "Seeni"
-    }
+    },
+    "login": {
+      "label": "Kanaan seenta",
+      "email": "Imeelii (Cavos dhaan)",
+      "telegram": "Telegram (Cavos dhaan)",
+      "wallet": "Wallet Stellar kee",
+      "wallet_named": "Wallet {wallet} kee",
+      "cavos_unknown": "Telegram ykn imeelii (Cavos dhaan)",
+      "last_login": "Seensa dhumaa: {date}",
+      "one_wallet_per_method": "Yeroo hunda karaa seensaa tokkoon seeni. Tokkoon tokkoon isaanii (imeelii, Telegram ykn wallet) wallet mataa isaa qaba; karaa biraatiin yoo seente herrega biraa, gahee fi seenaa kee malee, banta."
+    },
+    "overview": {
+      "back": "Gara waldaaleetti deebi’i",
+      "subtitle": "Haftee, odeeffannoo dhuunfaa fi seensa herregaa bakka tokkotti.",
+      "identity": "Piroofaayilii kee",
+      "unnamed": "Piroofaayilii kee",
+      "unassigned": "Hin ramadamne",
+      "member_since": "{date} irraa miseensa"
+    },
+    "button_save_small": "Olkaa’i"
   },
   "api_errors": {
     "VALIDATION_ERROR": "Odeeffannoon galche sirrii miti",
@@ -200,7 +219,8 @@
     "INDUSTRY_MANAGER": "Hoji Gaggeessaa Industirii",
     "STORE_KEEPER": "Eegduu Kuusaa",
     "EXPORT_MANAGER": "Hoji Gaggeessaa Alergii",
-    "none": "Gahee hin qabu"
+    "none": "Gahee hin qabu",
+    "admin": "Bulchaa CofiBlocks"
   },
   "tasks": {
     "COLLECTOR": [
@@ -332,7 +352,17 @@
     "retry": "Irra deebi'ii yaali",
     "balance": "Haftee:",
     "view_account": "Stellar Expert irratti ilaali",
-    "view_funding": "Taransaakshinii maallaqa itti galchuu ilaali"
+    "view_funding": "Taransaakshinii maallaqa itti galchuu ilaali",
+    "current_balance": "Haftee ammaa",
+    "balance_unavailable": "Hafteen hin argamu",
+    "testnet_hint": "Haftee pirojektii Stellar Testnet irratti.",
+    "mainnet_hint": "Haftee kee neetworkii Stellar irratti.",
+    "refresh_error": "Haaromsuun hin danda’amne. Hafteen dhumaa mul’achaa jira.",
+    "refresh_balance": "Haftee haaromsi",
+    "address": "Teessoo Stellar",
+    "copy_address": "Teessoo waraabi",
+    "address_copied": "Teessoon waraabame",
+    "copy_error": "Waraabuun hin danda’amne. Teessoo filadhuutii harkaan waraabi."
   },
   "stages": {
     "DELIVERED": "Galfame",
@@ -376,16 +406,19 @@
       "SOLD": "Gurgurame"
     },
     "filter_coop": "Waldaa",
-    "all_coops": "Waldaalee hunda"
+    "all_coops": "Waldaalee hunda",
+    "export_csv": "CSV baasi",
+    "exporting": "Baasaa jira…"
   },
   "pending": {
     "title": "Galfamoota madaalamuu qaban",
-    "subtitle": "Qonnaan bultoonni galfamoota kana buufata keessan irratti bot dhaan galmeessan. Madaalaa, ragaa kaffaltii suuraa kaasaa.",
+    "subtitle": "Qonnaan bulaan galmeewwan kana bot keessatti mirkaneesseera. Ulfaatina mallatteessi, nagahee suuraa kaasi.",
     "count": "{count} eegaa jiru",
     "empty": "Amma wanti madaalamu hin jiru.",
     "delivered": "{time} {center} irratti galfame",
     "estimated": "gara {kg} kg",
-    "weigh": "Ulfaatina galmeessi"
+    "weigh": "Ulfaatina galmeessi",
+    "confirmed": "Kg {kg} qonnaan bulaan mirkaneesse"
   },
   "reception": {
     "title": "Ulfaatina fi ragaa galmeessi",
@@ -407,7 +440,8 @@
     "done_text": "Bachiin amma Fudhatameera. Qonnaan bulaan ni beeksifama.",
     "view_tx": "Daddabarsa Stellar irratti ilaali",
     "error_generic": "Rakkoon uumame. Irra deebi'ii yaali.",
-    "error_cancelled": "Mallattoo dhiiftee jirta. Wanti galmeeffame hin jiru."
+    "error_cancelled": "Mallattoo dhiiftee jirta. Wanti galmeeffame hin jiru.",
+    "weight_confirmed": "Qonnaan bulaan ulfaatina kana bot keessatti mirkaneesseera. Kanatu Stellar irratti galmeeffama."
   },
   "summary": {
     "title": "Pilootii walumaan",
@@ -431,7 +465,8 @@
     "event_delivered": "{farmer} {center} irratti buna galfate",
     "event_received": "{center} irratti {kg} kg madaalame",
     "event_stage": "{batch} gara sadarkaa haaraatti ce'e",
-    "view_tx": "Daddabarsa"
+    "view_tx": "Daddabarsa",
+    "event_delivered_confirmed": "{farmer} {center}tti kg {kg} galche"
   },
   "dashboard": {
     "title": "Waldaalee sadii. Imala bunaa tokko.",
@@ -465,5 +500,122 @@
     "explore": "Waldaa ilaali",
     "activity": "Sochii waldaalee",
     "activity_hint": "Tarkaanfiiwwan dhumaa galmaa’an · waldaalee hunda"
+  },
+  "deliveries": {
+    "title": "Galmee giddugala walitti qabaatti",
+    "subtitle": "Galmee hunda ulfaatina madaalii waliin galmeessi. Qonnaan bulaan bot keessatti ni mirkaneessa, sana booda qofa baachi Stellar irratti uumama.",
+    "record": "Galmee galmeessi",
+    "empty": "Ammaaf galmeen hin jiru.",
+    "waiting_count": "{count} qonnaan bulaa eegaa jira",
+    "kg": "Kg {kg}",
+    "waiting_until": "Hanga {time}tti qonnaan bulaan bot keessatti akka mirkaneessu eegaa jira.",
+    "confirmed_batch": "Qonnaan bulaan mirkaneesseera: baachi {batch}. Gadii ulfaatina mallatteessi.",
+    "cancel": "Haqi",
+    "status": {
+      "PENDING": "Eegaa jira",
+      "CONFIRMED": "Mirkanaa'eera",
+      "REJECTED": "Didameera",
+      "CANCELLED": "Haqameera",
+      "EXPIRED": "Yeroon darbeera"
+    },
+    "status_hint": {
+      "PENDING": "Qonnaan bulaan bot keessatti akka mirkaneessu eegaa jira.",
+      "CONFIRMED": "Qonnaan bulaan mirkaneesseera. Baachiin Stellar irratti galmaa'aa jira.",
+      "REJECTED": "Qonnaan bulaan sirrii miti jedheera. Isa waliin ilaali, irra deebi'ii galmeessi.",
+      "CANCELLED": "Ati haqxeetta. Wanti galmaa'e hin jiru.",
+      "EXPIRED": "Qonnaan bulaan yeroon hin deebisne. Ammallee yoo barbaachise irra deebi'ii galmeessi."
+    },
+    "dialog_title": "Galmee galmeessi",
+    "dialog_subtitle": "Qonnaan bulaan bot keessatti akka mirkaneessu ni gaafatama.",
+    "close": "Cufi",
+    "farmer_label": "Qonnaan bulaa",
+    "farmer_search": "Maqaa ykn ID'n barbaadi",
+    "no_farmers": "Waldaa keessan keessaa qonnaan bulaan hin argamne.",
+    "not_linked": "Ammallee bot waliin hin walqabsiifne, kanaaf mirkaneessuu hin danda'u.",
+    "not_consented": "Ammallee bot keessatti eeyyama hin kennine.",
+    "center_label": "Giddugala walitti qabaa",
+    "weight_label": "Ulfaatina madaalii irratti",
+    "when_label": "Yeroo galmeen itti kenname",
+    "confirm_hint": "Hanga qonnaan bulaan mirkaneessutti Stellar irratti wanti galmaa'u hin jiru. Yeroo eegaa jirutti haquu dandeessa.",
+    "submit": "Akka mirkaneessuuf qonnaan bulaatti ergi",
+    "sending": "Ergaa jira…",
+    "sent": "Kg {kg} qonnaan bulaatti ergameera",
+    "sent_text": "{farmer} bot keessatti akka mirkaneessu ni gaafatama. Yeroo mirkaneessu, ulfaatina akka mallatteessituuf Galmee madaalamuu qaban keessatti mul'ata.",
+    "error_generic": "Rakkoon uumameera. Irra deebi'ii yaali."
+  },
+  "batch": {
+    "back": "Baachii hunda",
+    "batch_label": "Baachii",
+    "not_found": "Baachiin kun hin jiru.",
+    "farmer": "Qonnaan bulaa",
+    "cooperative": "Waldaa",
+    "center": "Buufata walitti qabiinsaa",
+    "delivered": "Galfame",
+    "weight": "Ulfaatina fudhatame",
+    "confirmed_kg": "Qonnaan bulaan mirkaneesse",
+    "verify_checking": "Stellar irratti mirkaneessaa jira…",
+    "verified": "Stellar irratti mirkanaa'eera",
+    "verified_text": "Tarkaanfiiwwan {steps} fi sanadoonni {docs} waliigaltee waliin walsimu.",
+    "not_verified": "Stellar waliin hin walsimu",
+    "not_verified_text": "Wanti asitti kuufame waliigaltee irraa adda. Garee pirojektii beeksisi.",
+    "verify_error": "Stellar qaqqabuun hin danda'amne. Irra deebi'ii yaali.",
+    "verify_again": "Irra deebi'ii mirkaneessi",
+    "actions_title": "Waan gochuu dandeessu",
+    "advance_to": "Gara {stage} tti dabarsi",
+    "stage_in_flight": "Jijjiiramni sadarkaa Stellar irratti mirkanaa'aa jira.",
+    "attach": "Sanada maxxansi",
+    "timeline_title": "Seenaa",
+    "by": "{who} n",
+    "by_farmer_agent": "qonnaan bulaa, bot irraa",
+    "weight_value": "{kg} kg",
+    "record_mismatch": "Galmeen kuufame hash isaa Stellar irra jiru waliin hin walsimu.",
+    "view_tx": "Daldala",
+    "view_tx_long": "Daldala Stellar irratti ilaali",
+    "documents_title": "Sanadoota",
+    "documents_empty": "Ammaaf sanadni hin jiru.",
+    "document_pending": "Hin mallattaa'amne",
+    "document_sign": "Mallatteessii maxxansi",
+    "download": "{name} buusi",
+    "kinds": {
+      "receipt": "Nagahee",
+      "certificate": "Ragaa",
+      "quality": "Gabaasa qulqullinaa",
+      "sale": "Sanada gurgurtaa",
+      "other": "Kan biraa"
+    },
+    "my_title": "Baachiiwwan si eegan",
+    "my_subtitle": "Ga'een kee baachiiwwan kana gara sadarkaa itti aanutti dabarsa.",
+    "my_count": "{count} eegaa jiru",
+    "my_empty": "Amma wanti si eegu hin jiru.",
+    "open": "Bani",
+    "close": "Cufi",
+    "error_generic": "Wanti tokko dogoggore. Irra deebi'ii yaali.",
+    "error_cancelled": "Mallattoo haqxeetta. Wanti galmaa'e hin jiru.",
+    "step_uploading": "Olkaa'aa jira…",
+    "step_preparing": "Qopheessaa jira…",
+    "step_signing": "Wallet kee keessatti mirkaneessi…",
+    "step_sending": "Stellar irratti galmeessaa jira…",
+    "stage_dialog": {
+      "title": "Gara sadarkaa itti aanutti dabarsi",
+      "stage_label": "Sadarkaa",
+      "weight_label": "Ulfaatina sadarkaa kana booda (filannoo)",
+      "weight_hint": "Fakkeenyaaf, gogsuu ykn kiisii booda.",
+      "notes_label": "Yaadannoo (filannoo)",
+      "immutable_hint": "Sadarkaan tokkoon tokkoon Stellar irratti al tokko qofa galmaa'a, deebisuun hin danda'amu.",
+      "submit": "Mallatteessii galmeessi",
+      "done": "Baachiin amma {stage} irra jira"
+    },
+    "doc_dialog": {
+      "title": "Sanada maxxansi",
+      "kind_label": "Gosa sanadaa",
+      "file_label": "Faayilii",
+      "file_choose": "Faayilii filadhu",
+      "file_hint": "PDF, suuraa, Excel ykn Word, hanga 10 MB.",
+      "too_large": "Faayiliin 10 MB caala.",
+      "uploaded_hint": "Duraan olkaa'ameera. Baachii irratti maxxansuuf mallatteessi.",
+      "hash_hint": "Faayiliin dhuunfaa ta'ee hafa; mallattoon isaa (hash) Stellar irra kaa'ama.",
+      "submit": "Olkaa'ii mallatteessi",
+      "done": "Sanadni maxxanfameera"
+    }
   }
 }

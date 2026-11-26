@@ -14,7 +14,9 @@ import organizationsRoute from './routes/organizations';
 import integrationsRoute from "./routes/integrations";
 import walletRoute from "./routes/wallet";
 import batchesRoute from "./routes/batches";
+import deliveriesRoute from "./routes/deliveries";
 import { startTelegramBot } from './bot';
+import { startIntegrationWorker } from './services/app/IntegrationWorker';
 import { errorHandlerMiddleware } from './middleware/errorHandler';
 import { requestId } from './middleware/requestId';
 import { withLogger } from './middleware/logger';
@@ -102,6 +104,7 @@ app.use("/api/organizations", organizationsRoute);
 app.use("/api/integrations", integrationsRoute);
 app.use("/api/wallet", walletRoute);
 app.use("/api/batches", batchesRoute);
+app.use("/api/deliveries", deliveriesRoute);
 
 async function main() {
   // The bot webhook is registered before the error handler.
@@ -109,6 +112,8 @@ async function main() {
 
   // Error handling middleware (must be last)
   app.use(errorHandlerMiddleware);
+
+  startIntegrationWorker();
 
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);

@@ -13,6 +13,36 @@ import { authService } from '@/services/auth'
  */
 const PENDING_KEY = 'cofiblocks:cavos-login-pending'
 
+/**
+ * Which Cavos method the user chose, and the email they typed. Kept in
+ * sessionStorage for the same reason as `PENDING_KEY`: Telegram reloads the
+ * page on return.
+ */
+const METHOD_KEY = 'cofiblocks:cavos-login-method'
+
+interface ChosenMethod {
+  method: 'email' | 'telegram'
+  email?: string
+}
+
+function readMethod(): ChosenMethod | null {
+  try {
+    const raw = window.sessionStorage.getItem(METHOD_KEY)
+    return raw ? (JSON.parse(raw) as ChosenMethod) : null
+  } catch {
+    return null
+  }
+}
+
+function writeMethod(value: ChosenMethod | null): void {
+  try {
+    if (value) window.sessionStorage.setItem(METHOD_KEY, JSON.stringify(value))
+    else window.sessionStorage.removeItem(METHOD_KEY)
+  } catch {
+    // Without sessionStorage the profile just will not say how they signed in.
+  }
+}
+
 function readPending(): boolean {
   try {
     return window.sessionStorage.getItem(PENDING_KEY) === '1'
@@ -62,6 +92,7 @@ export type CavosLoginError = 'generic' | 'send_email' | 'code' | 'restore_devic
 export function useCavosLogin(onLoggedIn: () => void) {
   const {
     isAuthenticated,
+    user: cavosUser,
     address,
     wallet,
     walletStatus,
@@ -89,6 +120,7 @@ export function useCavosLogin(onLoggedIn: () => void) {
 
   const finish = useCallback(() => {
     writePending(false)
+    writeMethod(null)
     setPending(false)
     setIsRegistering(false)
   }, [])
@@ -118,6 +150,7 @@ export function useCavosLogin(onLoggedIn: () => void) {
    */
   const loginWithTelegram = useCallback(async () => {
     begin()
+    writeMethod({ method: 'telegram' })
     if (isAuthenticated) return
     try {
       await login('telegram')
@@ -147,6 +180,7 @@ export function useCavosLogin(onLoggedIn: () => void) {
   const verifyCode = useCallback(
     async (email: string, code: string): Promise<boolean> => {
       begin()
+      writeMethod({ method: 'email', email })
       try {
         await verifyOtp(email, normalizeEmailCode(code))
         return true
@@ -160,6 +194,24 @@ export function useCavosLogin(onLoggedIn: () => void) {
     [begin, verifyOtp, finish]
   )
 
+  /**
+   * How this Cavos session signed in. Cavos's own record of the provider wins
+   * (a session Cavos restored may not be the method just clicked); otherwise,
+   * what the user chose on our screen.
+   */
+  const cavosLogin = useCallback(() => {
+    const chosen = readMethod()
+    const provider = cavosUser?.provider?.toLowerCase() ?? ''
+    const method: 'email' | 'telegram' | null = provider.includes('telegram')
+      ? 'telegram'
+      : provider.includes('email') || provider.includes('otp')
+        ? 'email'
+        : chosen?.method ?? null
+    if (!method) return undefined
+    const identity = method === 'email' ? cavosUser?.email ?? chosen?.email : cavosUser?.name ?? cavosUser?.email
+    return { method, identity: identity ?? null }
+  }, [cavosUser])
+
   const register = useCallback(
     async (account: string) => {
       if (registering.current) return
@@ -168,7 +220,7 @@ export function useCavosLogin(onLoggedIn: () => void) {
       try {
         const { nonce, message } = await authService.requestNonce(account)
         const { signature, publicKey } = await signMessage(message)
-        await authService.registerWallet(account, bytesToBase64(signature), nonce, 'cavos', publicKey)
+        await authService.registerWallet(account, bytesToBase64(signature), nonce, 'cavos', publicKey, cavosLogin())
         finish()
         onLoggedIn()
       } catch (err) {
@@ -177,7 +229,7 @@ export function useCavosLogin(onLoggedIn: () => void) {
         registering.current = false
       }
     },
-    [signMessage, finish, onLoggedIn, fail]
+    [signMessage, finish, onLoggedIn, fail, cavosLogin]
   )
 
   useEffect(() => {

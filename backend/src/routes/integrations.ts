@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 
 import { verifyVoiceLedgerSignature } from '@/middleware/voiceLedgerSignature';
+import { HttpException } from '@/exceptions/HttpException';
+import * as DeliveryProposalsService from '@/services/app/DeliveryProposalsService';
 import * as IntegrationService from '@/services/app/IntegrationService';
 
 const router = Router();
@@ -20,6 +22,20 @@ router.post('/voiceledger/events', verifyVoiceLedgerSignature, async (req: Reque
 router.get('/voiceledger/events/:eventId', verifyVoiceLedgerSignature, async (req: Request, res: Response) => {
   const { status, body } = await IntegrationService.getVoiceLedgerEvent(req.params.eventId);
   res.status(status).json(body);
+});
+
+/**
+ * GET /api/integrations/voiceledger/farmers/:farmerRef/batches — the farmer's
+ * latest batches and the deliveries waiting for their answer ("where is my
+ * coffee?"). Errors use the same `error` object as the events.
+ */
+router.get('/voiceledger/farmers/:farmerRef/batches', verifyVoiceLedgerSignature, async (req: Request, res: Response) => {
+  try {
+    res.json(await DeliveryProposalsService.farmerBatches(req.params.farmerRef.trim().toUpperCase()));
+  } catch (error) {
+    if (!(error instanceof HttpException)) throw error;
+    res.status(error.statusCode).json({ status: 'failed', error: { code: error.code, message: error.message } });
+  }
 });
 
 export default router;

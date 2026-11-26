@@ -23,6 +23,7 @@ export default function AdminUsersPage() {
   const t = useTranslations('admin_users')
   const tr = useTranslations('roles')
   const tc = useTranslations('common')
+  const tl = useTranslations('profile.login')
   const { user: me } = useUser()
 
   const [users, setUsers] = useState<User[]>([])
@@ -60,7 +61,7 @@ export default function AdminUsersPage() {
     return users.filter((u) => {
       if (roleFilter === 'NONE' && u.role) return false
       if (!query) return true
-      return [u.name, u.email, u.telegramUsername, u.walletAddress].some((v) => v?.toLowerCase().includes(query))
+      return [u.name, u.email, u.telegramUsername, u.walletAddress, u.loginIdentity].some((v) => v?.toLowerCase().includes(query))
     })
   }, [users, search, roleFilter])
 
@@ -180,6 +181,19 @@ export default function AdminUsersPage() {
                         {shortAddress(u.walletAddress)}
                       </span>
                     )}
+                    {/* Each login method has its own wallet: this tells two accounts of one person apart. */}
+                    <span className="block text-xs text-[#5a6760]">
+                      {u.loginMethod === 'email'
+                        ? tl('email')
+                        : u.loginMethod === 'telegram'
+                          ? tl('telegram')
+                          : u.loginMethod === 'wallet' || u.walletProvider !== 'cavos'
+                            ? u.walletApp
+                              ? tl('wallet_named', { wallet: u.walletApp })
+                              : tl('wallet')
+                            : tl('cavos_unknown')}
+                      {u.loginIdentity && u.loginMethod !== 'wallet' ? ` · ${u.loginIdentity}` : ''}
+                    </span>
                   </td>
                   <td>
                     {u.role ? (

@@ -114,7 +114,26 @@
       "eyebrow": "COFIBLOCKS TRACEABILITY",
       "greeting": "Hola, {name}",
       "login": "Iniciar sesión"
-    }
+    },
+    "login": {
+      "label": "Entras con",
+      "email": "Correo (vía Cavos)",
+      "telegram": "Telegram (vía Cavos)",
+      "wallet": "Tu propia wallet de Stellar",
+      "wallet_named": "Tu wallet {wallet}",
+      "cavos_unknown": "Telegram o correo (vía Cavos)",
+      "last_login": "Último ingreso: {date}",
+      "one_wallet_per_method": "Entra siempre con el mismo método. Cada uno (correo, Telegram o wallet) tiene su propia wallet, así que con otro método entras a otra cuenta, sin tu rol ni tu historial."
+    },
+    "overview": {
+      "back": "Volver a las cooperativas",
+      "subtitle": "Tu saldo, datos personales y acceso a la cuenta, en un solo lugar.",
+      "identity": "Tu perfil",
+      "unnamed": "Tu perfil",
+      "unassigned": "Sin asignar",
+      "member_since": "Miembro desde {date}"
+    },
+    "button_save_small": "Guardar"
   },
   "api_errors": {
     "VALIDATION_ERROR": "La entrada es inválida",
@@ -200,7 +219,8 @@
     "INDUSTRY_MANAGER": "Industry Manager",
     "STORE_KEEPER": "Store Keeper",
     "EXPORT_MANAGER": "Export Manager",
-    "none": "Sin rol"
+    "none": "Sin rol",
+    "admin": "Administrador de CofiBlocks"
   },
   "tasks": {
     "COLLECTOR": [
@@ -332,7 +352,17 @@
     "retry": "Reintentar",
     "balance": "Saldo:",
     "view_account": "Ver en Stellar Expert",
-    "view_funding": "Ver la transacción de fondeo"
+    "view_funding": "Ver la transacción de fondeo",
+    "current_balance": "Saldo actual",
+    "balance_unavailable": "Saldo no disponible",
+    "testnet_hint": "Saldo del piloto en Stellar Testnet.",
+    "mainnet_hint": "Tu saldo en la red Stellar.",
+    "refresh_error": "No se pudo actualizar. Se muestra el último saldo consultado.",
+    "refresh_balance": "Actualizar saldo",
+    "address": "Dirección de Stellar",
+    "copy_address": "Copiar dirección",
+    "address_copied": "Dirección copiada",
+    "copy_error": "No se pudo copiar. Puedes seleccionar y copiar la dirección manualmente."
   },
   "stages": {
     "DELIVERED": "Entregado",
@@ -376,16 +406,19 @@
       "SOLD": "Vendido"
     },
     "filter_coop": "Cooperativa",
-    "all_coops": "Todas las cooperativas"
+    "all_coops": "Todas las cooperativas",
+    "export_csv": "Exportar CSV",
+    "exporting": "Exportando…"
   },
   "pending": {
     "title": "Entregas por pesar",
-    "subtitle": "Los caficultores registraron estas entregas en tu centro desde el bot. Pésalas y fotografía el recibo.",
+    "subtitle": "El caficultor confirmó estas entregas en el bot. Firma el peso y fotografía el recibo.",
     "count": "{count} pendientes",
     "empty": "No hay nada por pesar ahora.",
     "delivered": "Entregado {time} en {center}",
     "estimated": "unos {kg} kg",
-    "weigh": "Registrar peso"
+    "weigh": "Registrar peso",
+    "confirmed": "{kg} kg confirmados por el caficultor"
   },
   "reception": {
     "title": "Registrar peso y recibo",
@@ -407,7 +440,8 @@
     "done_text": "El lote quedó Recibido. Se le avisará al caficultor.",
     "view_tx": "Ver la transacción en Stellar",
     "error_generic": "Algo salió mal. Inténtalo de nuevo.",
-    "error_cancelled": "Cancelaste la firma. No se registró nada."
+    "error_cancelled": "Cancelaste la firma. No se registró nada.",
+    "weight_confirmed": "El caficultor confirmó este peso en el bot. Es el que queda registrado en Stellar."
   },
   "summary": {
     "title": "El piloto de un vistazo",
@@ -431,7 +465,8 @@
     "event_delivered": "{farmer} entregó café en {center}",
     "event_received": "Se pesaron {kg} kg en {center}",
     "event_stage": "{batch} pasó a una nueva etapa",
-    "view_tx": "Transacción"
+    "view_tx": "Transacción",
+    "event_delivered_confirmed": "{farmer} entregó {kg} kg en {center}"
   },
   "dashboard": {
     "title": "Tres cooperativas. Un mismo recorrido.",
@@ -465,5 +500,122 @@
     "explore": "Explorar cooperativa",
     "activity": "Así avanzan las cooperativas",
     "activity_hint": "Últimos pasos registrados · todas las cooperativas"
+  },
+  "deliveries": {
+    "title": "Entregas en el centro de acopio",
+    "subtitle": "Registra cada entrega con el peso de la báscula. El caficultor la confirma en el bot y solo entonces se crea el lote en Stellar.",
+    "record": "Registrar entrega",
+    "empty": "Todavía no hay entregas registradas.",
+    "waiting_count": "{count} esperando al caficultor",
+    "kg": "{kg} kg",
+    "waiting_until": "Esperando que el caficultor confirme en el bot, hasta el {time}.",
+    "confirmed_batch": "Confirmada por el caficultor: lote {batch}. Firma el peso abajo.",
+    "cancel": "Cancelar",
+    "status": {
+      "PENDING": "Esperando",
+      "CONFIRMED": "Confirmada",
+      "REJECTED": "Rechazada",
+      "CANCELLED": "Cancelada",
+      "EXPIRED": "Vencida"
+    },
+    "status_hint": {
+      "PENDING": "Esperando que el caficultor confirme en el bot.",
+      "CONFIRMED": "Confirmada por el caficultor. El lote se está registrando en Stellar.",
+      "REJECTED": "El caficultor dijo que no es correcta. Revísala con él y vuelve a registrarla.",
+      "CANCELLED": "La cancelaste. No se registró nada.",
+      "EXPIRED": "El caficultor no respondió a tiempo. Vuelve a registrarla si todavía hace falta."
+    },
+    "dialog_title": "Registrar una entrega",
+    "dialog_subtitle": "Se le pedirá al caficultor que la confirme en el bot.",
+    "close": "Cerrar",
+    "farmer_label": "Caficultor",
+    "farmer_search": "Buscar por nombre o ID",
+    "no_farmers": "No hay caficultores de tu cooperativa con ese dato.",
+    "not_linked": "Todavía no se vinculó al bot, así que no puede confirmar.",
+    "not_consented": "Todavía no dio su consentimiento en el bot.",
+    "center_label": "Centro de acopio",
+    "weight_label": "Peso en la báscula",
+    "when_label": "Fecha y hora de la entrega",
+    "confirm_hint": "No se registra nada en Stellar hasta que el caficultor confirme. Mientras espera, puedes cancelarla.",
+    "submit": "Enviar al caficultor para que confirme",
+    "sending": "Enviando…",
+    "sent": "{kg} kg enviados al caficultor",
+    "sent_text": "A {farmer} se le pedirá en el bot que la confirme. Cuando lo haga, aparece en Entregas por pesar para que firmes el peso.",
+    "error_generic": "Algo salió mal. Inténtalo de nuevo."
+  },
+  "batch": {
+    "back": "Todos los lotes",
+    "batch_label": "Lote",
+    "not_found": "Este lote no existe.",
+    "farmer": "Caficultor",
+    "cooperative": "Cooperativa",
+    "center": "Centro de acopio",
+    "delivered": "Entregado",
+    "weight": "Peso recibido",
+    "confirmed_kg": "Confirmado por el caficultor",
+    "verify_checking": "Verificando en Stellar…",
+    "verified": "Verificado en Stellar",
+    "verified_text": "{steps} pasos y {docs} documentos coinciden con lo que guarda el contrato.",
+    "not_verified": "No coincide con Stellar",
+    "not_verified_text": "Algo guardado aquí difiere del contrato. Repórtalo al equipo del proyecto.",
+    "verify_error": "No se pudo consultar Stellar. Intenta de nuevo.",
+    "verify_again": "Verificar de nuevo",
+    "actions_title": "Lo que puedes hacer",
+    "advance_to": "Pasar a {stage}",
+    "stage_in_flight": "Un cambio de etapa se está confirmando en Stellar.",
+    "attach": "Adjuntar un documento",
+    "timeline_title": "Historial",
+    "by": "por {who}",
+    "by_farmer_agent": "el caficultor, desde el bot",
+    "weight_value": "{kg} kg",
+    "record_mismatch": "El registro guardado ya no coincide con su hash en Stellar.",
+    "view_tx": "Transacción",
+    "view_tx_long": "Ver la transacción en Stellar",
+    "documents_title": "Documentos",
+    "documents_empty": "Todavía no hay documentos.",
+    "document_pending": "Sin firmar",
+    "document_sign": "Firmar y adjuntar",
+    "download": "Descargar {name}",
+    "kinds": {
+      "receipt": "Recibo",
+      "certificate": "Certificado",
+      "quality": "Informe de calidad",
+      "sale": "Documento de venta",
+      "other": "Otro"
+    },
+    "my_title": "Lotes esperándote",
+    "my_subtitle": "Tu rol pasa estos lotes a su siguiente etapa.",
+    "my_count": "{count} en espera",
+    "my_empty": "Nada te espera por ahora.",
+    "open": "Abrir",
+    "close": "Cerrar",
+    "error_generic": "Algo salió mal. Intenta de nuevo.",
+    "error_cancelled": "Cancelaste la firma. No se registró nada.",
+    "step_uploading": "Subiendo…",
+    "step_preparing": "Preparando…",
+    "step_signing": "Confirma en tu wallet…",
+    "step_sending": "Registrando en Stellar…",
+    "stage_dialog": {
+      "title": "Pasar a la siguiente etapa",
+      "stage_label": "Etapa",
+      "weight_label": "Peso después de esta etapa (opcional)",
+      "weight_hint": "Por ejemplo, después del secado o del ensacado.",
+      "notes_label": "Notas (opcional)",
+      "immutable_hint": "Cada etapa se registra una sola vez en Stellar y no se puede deshacer.",
+      "submit": "Firmar y registrar",
+      "done": "El lote ahora está en {stage}"
+    },
+    "doc_dialog": {
+      "title": "Adjuntar un documento",
+      "kind_label": "Tipo de documento",
+      "file_label": "Archivo",
+      "file_choose": "Elige un archivo",
+      "file_hint": "PDF, foto, Excel o Word, hasta 10 MB.",
+      "too_large": "El archivo pesa más de 10 MB.",
+      "uploaded_hint": "Ya está subido. Firma para adjuntarlo al lote.",
+      "hash_hint": "El archivo queda privado; su huella (hash) va a Stellar para que cualquiera compruebe que no cambió.",
+      "submit": "Subir y firmar",
+      "done": "Documento adjuntado"
+    }
   }
 }

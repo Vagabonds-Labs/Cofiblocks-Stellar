@@ -70,6 +70,12 @@ class WalletService {
     window.localStorage.removeItem(SELECTED_WALLET_KEY);
   }
 
+  /** The wallet app the user picked (freighter, lobstr…), if any. */
+  selectedWalletApp(): string | null {
+    if (typeof window === "undefined") return null;
+    return StellarWalletsKit.selectedModule?.productId ?? window.localStorage.getItem(SELECTED_WALLET_KEY);
+  }
+
   /** Opens the selection modal and returns the connected address. */
   async connect(): Promise<string> {
     this.init();

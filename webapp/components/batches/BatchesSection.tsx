@@ -1,11 +1,12 @@
 'use client'
 
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import { ArrowDownTrayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useLocale, useTranslations } from 'next-intl'
+import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ExplorerLink } from '@/components/trace'
-import type { ApiError } from '@/lib/api'
+import { saveBlob, type ApiError } from '@/lib/api'
 import { batchesService } from '@/services/api/batches'
 import { organizationsService } from '@/services/api/organizations'
 import {
@@ -41,7 +42,27 @@ export function BatchesSection({
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const requestId = useRef(0)
+
+  /** The CSV has the same filters as the table. */
+  const exportCsv = async () => {
+    setExporting(true)
+    setExportError(null)
+    try {
+      const { blob, fileName } = await batchesService.exportCsv({
+        stage: stage ?? undefined,
+        organizationId: coopId || undefined,
+        search: search.trim() || undefined,
+      })
+      saveBlob(blob, fileName ?? 'cofiblocks-batches.csv')
+    } catch (err) {
+      setExportError((err as ApiError).message)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const load = useCallback(async () => {
     const id = ++requestId.current
@@ -131,8 +152,22 @@ export function BatchesSection({
               className="field-input pl-10"
             />
           </label>
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={exporting || !page || page.total === 0}
+            className="btn-secondary inline-flex shrink-0 items-center justify-center gap-2 px-4 py-2.5"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" aria-hidden="true" />
+            {exporting ? t('exporting') : t('export_csv')}
+          </button>
         </div>
       </div>
+      {exportError && (
+        <p role="alert" className="text-sm text-red-800">
+          {exportError}
+        </p>
+      )}
 
       {page && totalAll > 0 && (
         <div
@@ -204,7 +239,12 @@ export function BatchesSection({
               {page.batches.map((batch) => (
                 <tr key={batch.id}>
                   <td>
-                    <p className="font-mono font-semibold">{batch.number}</p>
+                    <Link
+                      href={`/${locale}/batches/${batch.id}`}
+                      className="font-mono font-semibold text-[rgb(var(--cb-primary))] underline-offset-4 hover:underline"
+                    >
+                      {batch.number}
+                    </Link>
                     <p className="text-xs text-[#5a6760]">
                       {date(batch.deliveredAt)}
                     </p>

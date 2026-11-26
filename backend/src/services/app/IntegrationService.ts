@@ -5,6 +5,7 @@ import { HttpException } from '@/exceptions/HttpException';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import {
+  deliveryConfirmationSchema,
   deliveryCreatedSchema,
   farmerConsentSchema,
   farmerLinkedSchema,
@@ -12,6 +13,7 @@ import {
   integrationEventSchema,
 } from '@/schemas/integrationSchemas';
 import * as DeliveriesService from '@/services/app/DeliveriesService';
+import * as DeliveryProposalsService from '@/services/app/DeliveryProposalsService';
 import * as FarmerDataService from '@/services/app/FarmerDataService';
 import type { IntegrationContext } from '@/services/app/FarmerDataService';
 import * as FarmersService from '@/services/app/FarmersService';
@@ -61,6 +63,9 @@ const HANDLERS = new Map<string, Handler>([
   ['farmer.profile', async (data, ctx) => ({
     ...(await FarmerDataService.updateProfile(ctx, parse('farmer.profile', farmerProfileSchema, data))),
   })],
+  ['delivery.confirmation', async (data, ctx) => ({
+    ...(await DeliveryProposalsService.answer(ctx, parse('delivery.confirmation', deliveryConfirmationSchema, data))),
+  })],
   ['delivery.created', async (data, ctx) => ({
     ...(await DeliveriesService.createDelivery(ctx, parse('delivery.created', deliveryCreatedSchema, data))),
   })],
@@ -68,7 +73,7 @@ const HANDLERS = new Map<string, Handler>([
 
 /**
  * Fingerprint of what an event asks for: its type and data. A retry may
- * re-serialize the JSON or refresh `occurred_at`; it is still the same event.
+ * re-serialize the JSON; it is still the same event.
  */
 function contentHash(type: string, data: Record<string, unknown>): string {
   return sha256Canonical({ type, data });

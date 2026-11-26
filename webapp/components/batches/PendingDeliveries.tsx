@@ -11,9 +11,9 @@ import type { Batch } from '@/types/traceability'
 import { ReceptionDialog } from './ReceptionDialog'
 
 /**
- * Collector: deliveries farmers recorded through the bot at their center
- * that still need weight and receipt. The oldest first, since those have
- * been waiting longest.
+ * Collector: batches at their center that still need the weight and receipt
+ * signed on chain, usually deliveries the farmer just confirmed in the bot.
+ * The oldest first, since those have been waiting longest.
  */
 export function PendingDeliveries({
   collectionCenterId,
@@ -91,7 +91,9 @@ export function PendingDeliveries({
                     time: time(batch.deliveredAt),
                     center: batch.collectionCenter.name,
                   })}
-                  {batch.estimatedKg != null && ` · ${t('estimated', { kg: batch.estimatedKg })}`}
+                  {batch.confirmedKg != null
+                    ? ` · ${t('confirmed', { kg: batch.confirmedKg })}`
+                    : batch.estimatedKg != null && ` · ${t('estimated', { kg: batch.estimatedKg })}`}
                 </p>
               </div>
               <button

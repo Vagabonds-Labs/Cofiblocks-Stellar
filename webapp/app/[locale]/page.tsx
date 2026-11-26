@@ -10,11 +10,13 @@ import {
 } from '@heroicons/react/24/outline'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import {
   BatchesSection,
+  MyBatches,
   PendingDeliveries,
+  RecordedDeliveries,
   PilotSummary,
 } from '@/components/batches'
 
@@ -146,6 +148,7 @@ function StaffHome({ user }: { user: User }) {
   const t = useTranslations()
   const locale = useLocale()
   const [refreshKey, setRefreshKey] = useState(0)
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
   const ownCoopId =
     !user.isAdmin && user.role && user.role !== 'EXPORT_MANAGER'
       ? (user.organizationId ?? null)
@@ -200,12 +203,24 @@ function StaffHome({ user }: { user: User }) {
       />
 
       {user.role === 'COLLECTOR' && (
-        <PendingDeliveries
-          collectionCenterId={user.collectionCenterId ?? null}
-          refreshKey={refreshKey}
-          onRecorded={() => setRefreshKey((k) => k + 1)}
-        />
+        <>
+          <RecordedDeliveries
+            organizationId={user.organizationId ?? null}
+            collectionCenterId={user.collectionCenterId ?? null}
+            refreshKey={refreshKey}
+            onConfirmed={refresh}
+          />
+          <PendingDeliveries
+            collectionCenterId={user.collectionCenterId ?? null}
+            refreshKey={refreshKey}
+            onRecorded={refresh}
+          />
+        </>
       )}
+
+      {(user.role === 'INDUSTRY_MANAGER' ||
+        user.role === 'STORE_KEEPER' ||
+        user.role === 'EXPORT_MANAGER') && <MyBatches refreshKey={refreshKey} />}
 
       <BatchesSection
         refreshKey={refreshKey}

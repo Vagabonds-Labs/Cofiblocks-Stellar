@@ -39,16 +39,14 @@ import {
   TransactionBuilder,
   xdr,
 } from '@stellar/stellar-sdk';
-import { StaffRole } from '@prisma/client';
 
 import { ContractFactory } from '@/lib/StellarContracts';
 import { addressVal, bytes32Val, stringVal, u64Val } from '@/lib/StellarContracts/utils/scval';
 import { prisma } from '@/lib/prisma';
 import * as ReceptionService from '@/services/app/ReceptionService';
-import * as UsersService from '@/services/app/UsersService';
 import { getExplorerBaseURL } from '@/services/onchain/OnChainEnvService';
-import { ensureAccount } from '@/services/onchain/OnChainAccountsService';
 
+import { createCollector } from './lib/staff';
 import { farmerJourney, sendOk } from './lib/voiceledger';
 
 const contracts = new ContractFactory();
@@ -75,28 +73,6 @@ function record(proof: string, step: string, outcome: string, hash: string) {
 }
 
 /** A fresh testnet account with a staff role, in the database and on chain. */
-async function createCollector(coopCode: string, centerName: string | null) {
-  const coop = await prisma.organization.findUniqueOrThrow({
-    where: { code: coopCode },
-    include: { collectionCenters: true },
-  });
-  const center = centerName
-    ? coop.collectionCenters.find((c) => c.name.toLowerCase() === centerName.toLowerCase())
-    : coop.collectionCenters[0];
-  if (!center) throw new Error(`No collection center ${centerName} in ${coopCode}`);
-
-  const keypair = Keypair.random();
-  await ensureAccount(keypair.publicKey());
-  const user = await prisma.user.create({
-    data: {
-      name: `SOW evidence collector ${coopCode} ${new Date().toISOString().slice(0, 16)}`,
-      walletAddress: keypair.publicKey(),
-      walletProvider: 'evidence-script',
-    },
-  });
-  const { tx_hash } = await UsersService.assignRole(user.id, StaffRole.COLLECTOR, coop.id, center.id);
-  return { keypair, user, coop, center, roleTx: tx_hash };
-}
 
 function sorobanDataOf(tx: Transaction): xdr.SorobanTransactionData {
   const envelope = tx.toEnvelope() as unknown as { type: string; value: { tx: { ext: { type: string; value: xdr.SorobanTransactionData } } } };
@@ -227,8 +203,8 @@ async function main() {
 
   // ── staff accounts ─────────────────────────────────────────────────────
   console.log('\nCreating a Collector for the batch\'s cooperative and one for another cooperative');
-  const collector = await createCollector(coopCode.toUpperCase(), centerName);
-  const outsider = await createCollector(otherCoop.toUpperCase(), null);
+  const collector = await createCollector(coopCode.toUpperCase(), centerName, 'SOW evidence collector');
+  const outsider = await createCollector(otherCoop.toUpperCase(), null, 'SOW evidence collector');
   record('Setup', `grant_role Collector → ${collector.coop.code} (${collector.keypair.publicKey().slice(0, 6)}…)`, 'success', collector.roleTx);
   record('Setup', `grant_role Collector → ${outsider.coop.code} (${outsider.keypair.publicKey().slice(0, 6)}…)`, 'success', outsider.roleTx);
 

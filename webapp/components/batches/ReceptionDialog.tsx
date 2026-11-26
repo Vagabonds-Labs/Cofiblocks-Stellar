@@ -1,15 +1,16 @@
 'use client'
 
-import { CameraIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { CameraIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { useTranslations } from 'next-intl'
-import { useEffect, useId, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useState } from 'react'
 
 import { ExplorerLink } from '@/components/trace'
 import type { ApiError } from '@/lib/api'
 import { batchesService } from '@/services/api/batches'
 import { walletService } from '@/services/wallet/walletService'
 import type { Batch, Reception } from '@/types/traceability'
+
+import { DialogShell } from './DialogShell'
 
 type Step = 'form' | 'hashing' | 'preparing' | 'signing' | 'sending' | 'done'
 
@@ -24,7 +25,8 @@ async function sha256Hex(file: File): Promise<string> {
  * The receipt photo never leaves the phone yet: only its SHA-256 goes on
  * chain, so the photo can later be checked against it. The backend prepares
  * `record_reception`, the Collector's wallet (Cavos or their own) signs it and
- * the backend sends it, paying the fee.
+ * the backend sends it, paying the fee. When the farmer already confirmed the
+ * weight in the bot, that weight is the one signed and cannot be edited here.
  */
 export function ReceptionDialog({
   batch,
@@ -36,9 +38,10 @@ export function ReceptionDialog({
   onRecorded: () => void
 }) {
   const t = useTranslations('reception')
-  const titleId = useId()
-  const dialog = useRef<HTMLDivElement>(null)
-  const [weight, setWeight] = useState(batch.estimatedKg ? String(batch.estimatedKg) : '')
+  const confirmed = batch.confirmedKg
+  const [weight, setWeight] = useState(
+    confirmed != null ? String(confirmed) : batch.estimatedKg ? String(batch.estimatedKg) : ''
+  )
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
@@ -49,15 +52,6 @@ export function ReceptionDialog({
   const busy = step !== 'form' && step !== 'done'
   const weightKg = Number(weight.replace(',', '.'))
   const valid = Number.isFinite(weightKg) && weightKg > 0 && weightKg <= 5000 && !!photo
-
-  useEffect(() => {
-    dialog.current?.querySelector<HTMLElement>('input')?.focus()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !busy) onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [busy, onClose])
 
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview)
@@ -92,39 +86,14 @@ export function ReceptionDialog({
     }
   }
 
-  // Portal to <body>: cards use `backdrop-blur`, which would make this
-  // `fixed` overlay position itself inside the card instead of the viewport.
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
-      onClick={() => !busy && onClose()}
+  return (
+    <DialogShell
+      title={t('title')}
+      subtitle={<span className="font-mono">{batch.number}</span>}
+      closeLabel={t('close')}
+      busy={busy}
+      onClose={onClose}
     >
-      <div
-        ref={dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 shadow-xl sm:rounded-3xl sm:p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 id={titleId} className="text-xl font-bold">
-              {t('title')}
-            </h2>
-            <p className="mt-1 break-words font-mono text-sm text-[#5a6760]">{batch.number}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="rounded-full p-1.5 text-[#5a6760] hover:bg-[#eef1ee] disabled:opacity-40"
-            aria-label={t('close')}
-          >
-            <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-          </button>
-        </div>
-
         {step === 'done' && result ? (
           <div className="mt-6 space-y-4" role="status">
             <p className="flex items-center gap-2 text-lg font-semibold text-[#14532d]">
@@ -152,10 +121,12 @@ export function ReceptionDialog({
                 <dt className="text-[#5a6760]">{t('farmer')}</dt>
                 <dd className="font-mono font-semibold">{batch.farmerRef}</dd>
               </div>
-              <div>
-                <dt className="text-[#5a6760]">{t('estimated')}</dt>
-                <dd className="font-semibold">{batch.estimatedKg != null ? `${batch.estimatedKg} kg` : '—'}</dd>
-              </div>
+              {confirmed == null && (
+                <div>
+                  <dt className="text-[#5a6760]">{t('estimated')}</dt>
+                  <dd className="font-semibold">{batch.estimatedKg != null ? `${batch.estimatedKg} kg` : '—'}</dd>
+                </div>
+              )}
             </dl>
 
             <label className="block">
@@ -167,12 +138,19 @@ export function ReceptionDialog({
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
                   disabled={busy}
-                  className="field-input pr-12 text-lg"
+                  readOnly={confirmed != null}
+                  aria-describedby={confirmed != null ? 'reception-confirmed-hint' : undefined}
+                  className={`field-input pr-12 text-lg ${confirmed != null ? 'bg-[#f4f7f4]' : ''}`}
                   placeholder="45.5"
                   required
                 />
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#5a6760]">kg</span>
               </div>
+              {confirmed != null && (
+                <span id="reception-confirmed-hint" className="mt-1 block text-sm text-[#14532d]">
+                  {t('weight_confirmed')}
+                </span>
+              )}
             </label>
 
             <div>
@@ -224,8 +202,6 @@ export function ReceptionDialog({
             </button>
           </form>
         )}
-      </div>
-    </div>,
-    document.body
+    </DialogShell>
   )
 }

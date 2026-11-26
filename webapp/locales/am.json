@@ -114,7 +114,26 @@
       "eyebrow": "COFIBLOCKS TRACEABILITY",
       "greeting": "ሰላም፣ {name}",
       "login": "ግባ"
-    }
+    },
+    "login": {
+      "label": "የሚገቡት በ",
+      "email": "ኢሜይል (በCavos)",
+      "telegram": "ቴሌግራም (በCavos)",
+      "wallet": "የራስዎ የStellar ዋሌት",
+      "wallet_named": "የእርስዎ {wallet} ዋሌት",
+      "cavos_unknown": "ቴሌግራም ወይም ኢሜይል (በCavos)",
+      "last_login": "የመጨረሻ መግቢያ፦ {date}",
+      "one_wallet_per_method": "ሁልጊዜ በተመሳሳይ የመግቢያ መንገድ ይግቡ። እያንዳንዱ (ኢሜይል፣ ቴሌግራም ወይም ዋሌት) የራሱ ዋሌት አለው፤ በሌላ መንገድ ከገቡ ያለ ሚናዎና ታሪክዎ ሌላ መለያ ይከፈታል።"
+    },
+    "overview": {
+      "back": "ወደ ማህበራት ተመለስ",
+      "subtitle": "ቀሪ ሂሳብዎ፣ የግል መረጃዎ እና የመለያ መዳረሻዎ በአንድ ቦታ።",
+      "identity": "የእርስዎ መገለጫ",
+      "unnamed": "የእርስዎ መገለጫ",
+      "unassigned": "አልተመደበም",
+      "member_since": "ከ{date} ጀምሮ አባል"
+    },
+    "button_save_small": "አስቀምጥ"
   },
   "api_errors": {
     "VALIDATION_ERROR": "ያስገቡት መረጃ ልክ አይደለም",
@@ -200,7 +219,8 @@
     "INDUSTRY_MANAGER": "የኢንዱስትሪ ሥራ አስኪያጅ",
     "STORE_KEEPER": "የመጋዘን ኃላፊ",
     "EXPORT_MANAGER": "የኤክስፖርት ሥራ አስኪያጅ",
-    "none": "ሚና የለም"
+    "none": "ሚና የለም",
+    "admin": "የCofiBlocks አስተዳዳሪ"
   },
   "tasks": {
     "COLLECTOR": [
@@ -332,7 +352,17 @@
     "retry": "እንደገና ይሞክሩ",
     "balance": "ቀሪ ሂሳብ፦",
     "view_account": "በStellar Expert ላይ ይመልከቱ",
-    "view_funding": "የገንዘብ ማስተላለፊያ ግብይቱን ይመልከቱ"
+    "view_funding": "የገንዘብ ማስተላለፊያ ግብይቱን ይመልከቱ",
+    "current_balance": "የአሁኑ ቀሪ ሂሳብ",
+    "balance_unavailable": "ቀሪ ሂሳብ አይገኝም",
+    "testnet_hint": "በStellar Testnet ላይ ያለ የሙከራ ቀሪ ሂሳብ።",
+    "mainnet_hint": "በStellar አውታረ መረብ ላይ ያለዎት ቀሪ ሂሳብ።",
+    "refresh_error": "ማዘመን አልተቻለም። የመጨረሻው ቀሪ ሂሳብ እየታየ ነው።",
+    "refresh_balance": "ቀሪ ሂሳብ አድስ",
+    "address": "የStellar አድራሻ",
+    "copy_address": "አድራሻውን ቅዳ",
+    "address_copied": "አድራሻው ተቀድቷል",
+    "copy_error": "መቅዳት አልተቻለም። አድራሻውን በመምረጥ በእጅ መቅዳት ይችላሉ።"
   },
   "stages": {
     "DELIVERED": "ደርሷል",
@@ -376,16 +406,19 @@
       "SOLD": "ተሽጧል"
     },
     "filter_coop": "ማህበር",
-    "all_coops": "ሁሉም ማህበራት"
+    "all_coops": "ሁሉም ማህበራት",
+    "export_csv": "CSV ላክ",
+    "exporting": "በመላክ ላይ…"
   },
   "pending": {
     "title": "የሚመዘኑ ርክክቦች",
-    "subtitle": "አርሶ አደሮች እነዚህን ርክክቦች በማዕከልዎ በቦቱ አስመዝግበዋል። ይመዝኗቸውና ደረሰኙን ፎቶ ያንሱ።",
+    "subtitle": "አርሶ አደሩ እነዚህን ርክክቦች በቦቱ አረጋግጧል። ክብደቱን ይፈርሙ፣ ደረሰኙን ፎቶ ያንሱ።",
     "count": "{count} በመጠባበቅ ላይ",
     "empty": "አሁን የሚመዘን ነገር የለም።",
     "delivered": "{time} በ{center} ደርሷል",
     "estimated": "ወደ {kg} ኪ.ግ",
-    "weigh": "ክብደት መዝግብ"
+    "weigh": "ክብደት መዝግብ",
+    "confirmed": "በአርሶ አደሩ የተረጋገጠ {kg} ኪ.ግ"
   },
   "reception": {
     "title": "ክብደትና ደረሰኝ መዝግብ",
@@ -407,7 +440,8 @@
     "done_text": "ሎቱ አሁን ተቀብሏል። አርሶ አደሩ ይነገረዋል።",
     "view_tx": "ግብይቱን በStellar ላይ ይመልከቱ",
     "error_generic": "ችግር ተፈጥሯል። እንደገና ይሞክሩ።",
-    "error_cancelled": "ፊርማውን ሰርዘዋል። ምንም አልተመዘገበም።"
+    "error_cancelled": "ፊርማውን ሰርዘዋል። ምንም አልተመዘገበም።",
+    "weight_confirmed": "አርሶ አደሩ ይህን ክብደት በቦቱ አረጋግጧል። በStellar ላይ የሚመዘገበው ይህ ነው።"
   },
   "summary": {
     "title": "ፓይለቱ በአንድ እይታ",
@@ -431,7 +465,8 @@
     "event_delivered": "{farmer} በ{center} ቡና አስረክቧል",
     "event_received": "በ{center} {kg} ኪ.ግ ተመዝኗል",
     "event_stage": "{batch} ወደ አዲስ ደረጃ ተሸጋግሯል",
-    "view_tx": "ግብይት"
+    "view_tx": "ግብይት",
+    "event_delivered_confirmed": "{farmer} በ{center} {kg} ኪ.ግ አስረክቧል"
   },
   "dashboard": {
     "title": "ሶስት ማህበራት። አንድ የቡና ጉዞ።",
@@ -465,5 +500,122 @@
     "explore": "ማህበሩን እይ",
     "activity": "የማህበራት እንቅስቃሴ",
     "activity_hint": "የቅርብ የተመዘገቡ እርምጃዎች · ሁሉም ማህበራት"
+  },
+  "deliveries": {
+    "title": "በመሰብሰቢያ ማዕከሉ የተደረጉ ርክክቦች",
+    "subtitle": "እያንዳንዱን ርክክብ ከሚዛኑ ክብደት ጋር ይመዝግቡ። አርሶ አደሩ በቦቱ ያረጋግጣል፣ ከዚያ ብቻ ሎቱ በStellar ላይ ይፈጠራል።",
+    "record": "ርክክብ ይመዝግቡ",
+    "empty": "እስካሁን የተመዘገበ ርክክብ የለም።",
+    "waiting_count": "{count} አርሶ አደሩን በመጠበቅ ላይ",
+    "kg": "{kg} ኪ.ግ",
+    "waiting_until": "አርሶ አደሩ በቦቱ እስኪያረጋግጥ እስከ {time} ድረስ በመጠበቅ ላይ።",
+    "confirmed_batch": "በአርሶ አደሩ ተረጋግጧል፦ ሎት {batch}። ከታች ክብደቱን ይፈርሙ።",
+    "cancel": "ሰርዝ",
+    "status": {
+      "PENDING": "በመጠበቅ ላይ",
+      "CONFIRMED": "ተረጋግጧል",
+      "REJECTED": "ተቀባይነት አላገኘም",
+      "CANCELLED": "ተሰርዟል",
+      "EXPIRED": "ጊዜው አልፏል"
+    },
+    "status_hint": {
+      "PENDING": "አርሶ አደሩ በቦቱ እስኪያረጋግጥ በመጠበቅ ላይ።",
+      "CONFIRMED": "በአርሶ አደሩ ተረጋግጧል። ሎቱ በStellar ላይ እየተመዘገበ ነው።",
+      "REJECTED": "አርሶ አደሩ ትክክል አይደለም ብሏል። ከእሱ ጋር ያረጋግጡና እንደገና ይመዝግቡ።",
+      "CANCELLED": "እርስዎ ሰርዘውታል። ምንም አልተመዘገበም።",
+      "EXPIRED": "አርሶ አደሩ በጊዜው አልመለሰም። አሁንም ካስፈለገ እንደገና ይመዝግቡ።"
+    },
+    "dialog_title": "ርክክብ ይመዝግቡ",
+    "dialog_subtitle": "አርሶ አደሩ በቦቱ እንዲያረጋግጥ ይጠየቃል።",
+    "close": "ዝጋ",
+    "farmer_label": "አርሶ አደር",
+    "farmer_search": "በስም ወይም በመታወቂያ ይፈልጉ",
+    "no_farmers": "በማህበርዎ ውስጥ አርሶ አደር አልተገኘም።",
+    "not_linked": "እስካሁን ከቦቱ ጋር አልተገናኘም፣ ስለዚህ ማረጋገጥ አይችልም።",
+    "not_consented": "እስካሁን በቦቱ ፈቃዱን አልሰጠም።",
+    "center_label": "የመሰብሰቢያ ማዕከል",
+    "weight_label": "በሚዛኑ ላይ ያለው ክብደት",
+    "when_label": "የርክክቡ ቀንና ሰዓት",
+    "confirm_hint": "አርሶ አደሩ እስኪያረጋግጥ ድረስ በStellar ላይ ምንም አይመዘገብም። በመጠበቅ ላይ እያለ መሰረዝ ይችላሉ።",
+    "submit": "እንዲያረጋግጥ ለአርሶ አደሩ ይላኩ",
+    "sending": "በመላክ ላይ…",
+    "sent": "{kg} ኪ.ግ ለአርሶ አደሩ ተልኳል",
+    "sent_text": "{farmer} በቦቱ እንዲያረጋግጥ ይጠየቃል። ሲያረጋግጥ ክብደቱን እንዲፈርሙ በሚመዘኑ ርክክቦች ውስጥ ይታያል።",
+    "error_generic": "የሆነ ችግር ተፈጥሯል። እንደገና ይሞክሩ።"
+  },
+  "batch": {
+    "back": "ሁሉም ሎቶች",
+    "batch_label": "ሎት",
+    "not_found": "ይህ ሎት የለም።",
+    "farmer": "አርሶ አደር",
+    "cooperative": "ማህበር",
+    "center": "የመሰብሰቢያ ማዕከል",
+    "delivered": "የደረሰው",
+    "weight": "የተቀበለው ክብደት",
+    "confirmed_kg": "በአርሶ አደሩ የተረጋገጠ",
+    "verify_checking": "በStellar ላይ በማረጋገጥ ላይ…",
+    "verified": "በStellar ላይ ተረጋግጧል",
+    "verified_text": "{steps} ደረጃዎች እና {docs} ሰነዶች ከውሉ ጋር ይዛመዳሉ።",
+    "not_verified": "ከStellar ጋር አይዛመድም",
+    "not_verified_text": "እዚህ የተቀመጠ አንድ ነገር ከውሉ ይለያል። ለፕሮጀክቱ ቡድን ያሳውቁ።",
+    "verify_error": "Stellarን ማግኘት አልተቻለም። እንደገና ይሞክሩ።",
+    "verify_again": "እንደገና አረጋግጥ",
+    "actions_title": "ማድረግ የሚችሉት",
+    "advance_to": "ወደ {stage} አሳልፍ",
+    "stage_in_flight": "የደረጃ ለውጥ በStellar ላይ በመረጋገጥ ላይ ነው።",
+    "attach": "ሰነድ አያይዝ",
+    "timeline_title": "ታሪክ",
+    "by": "በ{who}",
+    "by_farmer_agent": "አርሶ አደሩ፣ በቦቱ በኩል",
+    "weight_value": "{kg} ኪ.ግ",
+    "record_mismatch": "የተቀመጠው መዝገብ በStellar ላይ ካለው hash ጋር አይዛመድም።",
+    "view_tx": "ግብይት",
+    "view_tx_long": "ግብይቱን በStellar ላይ ይመልከቱ",
+    "documents_title": "ሰነዶች",
+    "documents_empty": "እስካሁን ሰነድ የለም።",
+    "document_pending": "ገና አልተፈረመም",
+    "document_sign": "ፈርመህ አያይዝ",
+    "download": "{name} አውርድ",
+    "kinds": {
+      "receipt": "ደረሰኝ",
+      "certificate": "የምስክር ወረቀት",
+      "quality": "የጥራት ሪፖርት",
+      "sale": "የሽያጭ ሰነድ",
+      "other": "ሌላ"
+    },
+    "my_title": "እርስዎን የሚጠብቁ ሎቶች",
+    "my_subtitle": "የእርስዎ ሚና እነዚህን ሎቶች ወደ ቀጣዩ ደረጃ ያሳልፋል።",
+    "my_count": "{count} በመጠባበቅ ላይ",
+    "my_empty": "አሁን የሚጠብቅዎት ነገር የለም።",
+    "open": "ክፈት",
+    "close": "ዝጋ",
+    "error_generic": "የሆነ ችግር ተፈጥሯል። እንደገና ይሞክሩ።",
+    "error_cancelled": "ፊርማውን ሰርዘዋል። ምንም አልተመዘገበም።",
+    "step_uploading": "በመስቀል ላይ…",
+    "step_preparing": "በማዘጋጀት ላይ…",
+    "step_signing": "በዋሌትዎ ያረጋግጡ…",
+    "step_sending": "በStellar ላይ በመመዝገብ ላይ…",
+    "stage_dialog": {
+      "title": "ወደ ቀጣዩ ደረጃ አሳልፍ",
+      "stage_label": "ደረጃ",
+      "weight_label": "ከዚህ ደረጃ በኋላ ያለው ክብደት (አማራጭ)",
+      "weight_hint": "ለምሳሌ ከማድረቅ ወይም ከማሸግ በኋላ።",
+      "notes_label": "ማስታወሻ (አማራጭ)",
+      "immutable_hint": "እያንዳንዱ ደረጃ በStellar ላይ አንድ ጊዜ ብቻ ይመዘገባል፣ መቀልበስ አይቻልም።",
+      "submit": "ፈርመህ መዝግብ",
+      "done": "ሎቱ አሁን {stage} ላይ ነው"
+    },
+    "doc_dialog": {
+      "title": "ሰነድ አያይዝ",
+      "kind_label": "የሰነድ ዓይነት",
+      "file_label": "ፋይል",
+      "file_choose": "ፋይል ይምረጡ",
+      "file_hint": "PDF፣ ፎቶ፣ Excel ወይም Word፣ እስከ 10 MB።",
+      "too_large": "ፋይሉ ከ10 MB ይበልጣል።",
+      "uploaded_hint": "አስቀድሞ ተሰቅሏል። ከሎቱ ጋር ለማያያዝ ይፈርሙ።",
+      "hash_hint": "ፋይሉ የግል ሆኖ ይቆያል፤ አሻራው (hash) በStellar ላይ ይቀመጣል።",
+      "submit": "ስቀልና ፈርም",
+      "done": "ሰነዱ ተያይዟል"
+    }
   }
 }

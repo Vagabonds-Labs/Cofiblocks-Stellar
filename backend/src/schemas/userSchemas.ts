@@ -73,6 +73,11 @@ export const registerWalletSchema = z.object({
     // wallet. It changes how the signature is verified (see `registerUser`)
     // and tells the web app what to sign with later.
     provider: z.enum(['cavos', 'stellar']).optional(),
+    // How the user signed in, shown on their profile: each method has its own
+    // wallet. Reported by the web app; never used for permissions.
+    login_method: z.enum(['email', 'telegram', 'wallet']).optional(),
+    login_identity: z.string().trim().max(254).optional(),
+    wallet_app: z.string().trim().max(32).optional(),
     // Cavos only: the "control key" that signed, if it is not the account itself.
     signer: z
       .string()

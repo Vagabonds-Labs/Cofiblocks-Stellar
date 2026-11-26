@@ -19,6 +19,8 @@
     "farmers:import": "tsx scripts/import-farmers.ts",
     "voiceledger:send": "tsx scripts/voiceledger-send.ts",
     "voiceledger:demo": "tsx scripts/voiceledger-demo.ts",
+    "voiceledger:deliveries": "tsx scripts/delivery-flow.ts",
+    "batch:stages": "tsx scripts/stage-flow.ts",
     "sow:evidence": "tsx scripts/sow-evidence.ts",
     "db:seed": "tsx scripts/seed.ts"
   },

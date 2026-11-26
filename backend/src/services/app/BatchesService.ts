@@ -1,8 +1,12 @@
 import { BatchStage, Prisma } from '@prisma/client';
 
 import { HttpException } from '@/exceptions/HttpException';
+import { isSameAddress } from '@/lib/StellarContracts/utils';
 import { prisma } from '@/lib/prisma';
+import { toDocumentDto } from '@/services/app/DocumentsService';
 import { buildFarmerRef } from '@/services/app/FarmersService';
+import { allowedNextStages, stagesActionableBy } from '@/services/app/StagesService';
+import * as OnChainTraceabilityService from '@/services/onchain/OnChainTraceabilityService';
 import { sha256Canonical } from '@/utils/canonicalJson';
 
 /** Who is asking, as `authenticate` leaves it in `req.user`. */
@@ -20,6 +24,7 @@ const batchInclude = {
   farmer: { select: { coopFarmerId: true } },
   organization: { select: { id: true, code: true, name: true } },
   collectionCenter: { select: { id: true, name: true } },
+  deliveryProposal: { select: { weightKg: true } },
 } satisfies Prisma.BatchInclude;
 
 type BatchRow = Prisma.BatchGetPayload<{ include: typeof batchInclude }>;
@@ -36,6 +41,8 @@ function toDto(batch: BatchRow) {
     deliveredAt: batch.deliveredAt.toISOString(),
     estimatedKg: batch.estimatedKg !== null ? Number(batch.estimatedKg) : null,
     ripeness: batch.ripeness,
+    /** Weight the Collector recorded at delivery and the farmer confirmed in the bot. */
+    confirmedKg: batch.deliveryProposal ? Number(batch.deliveryProposal.weightKg) : null,
     weightKg: batch.weightGrams !== null ? Number(batch.weightGrams) / 1000 : null,
     receiptHash: batch.receiptHash,
     receivedAt: batch.receivedAt?.toISOString() ?? null,
@@ -48,15 +55,33 @@ function toDto(batch: BatchRow) {
 
 export type BatchDto = ReturnType<typeof toDto>;
 
-export async function listBatches(
-  _viewer: Viewer,
-  filters: { stage?: BatchStage; collectionCenterId?: string; organizationId?: string; search?: string; limit: number; offset: number }
-) {
+export interface BatchFilters {
+  stage?: BatchStage;
+  collectionCenterId?: string;
+  organizationId?: string;
+  search?: string;
+  /** Only the batches the viewer's role can move forward now. */
+  forMe?: boolean;
+}
+
+/** Batches waiting for the viewer: the stages their role continues from, in their cooperative (any, for the Export Manager). */
+async function forMeFilter(viewer: Viewer): Promise<Prisma.BatchWhereInput> {
+  const user = await prisma.user.findUnique({ where: { id: viewer.userId }, select: { role: true, organizationId: true } });
+  const stages = stagesActionableBy(user?.role);
+  if (!user?.role || stages.length === 0) return { id: { in: [] } };
+  return {
+    stage: { in: stages },
+    ...(user.role !== 'EXPORT_MANAGER' && { organizationId: user.organizationId ?? '' }),
+  };
+}
+
+async function batchWhere(viewer: Viewer, filters: BatchFilters) {
   const base: Prisma.BatchWhereInput = {
     // A delivery whose transaction is not confirmed yet is not a batch yet.
     createdOnChainAt: { not: null },
     ...(filters.organizationId && { organizationId: filters.organizationId }),
     ...(filters.collectionCenterId && { collectionCenterId: filters.collectionCenterId }),
+    ...(filters.forMe && (await forMeFilter(viewer))),
   };
   const where: Prisma.BatchWhereInput = {
     ...base,
@@ -68,6 +93,11 @@ export async function listBatches(
       ],
     }),
   };
+  return { base, where };
+}
+
+export async function listBatches(viewer: Viewer, filters: BatchFilters & { limit: number; offset: number }) {
+  const { base, where } = await batchWhere(viewer, filters);
 
   const [total, batches, byStage] = await Promise.all([
     prisma.batch.count({ where }),
@@ -88,23 +118,49 @@ export async function listBatches(
   };
 }
 
-/** A batch with its history. Each step says whether its hash still matches the stored record. */
-export async function getBatch(_viewer: Viewer, id: string) {
-  const batch = await prisma.batch.findUnique({
-    where: { id },
-    include: {
-      ...batchInclude,
-      events: {
-        orderBy: { createdAt: 'asc' },
-        include: { actorUser: { select: { name: true, role: true } } },
+/**
+ * A batch with its history and documents. Each step says whether its hash
+ * still matches the stored record; `nextStages` are the stages the viewer can
+ * move it to now, and `canAttach` whether they can attach documents.
+ */
+export async function getBatch(viewer: Viewer, id: string) {
+  const [batch, user] = await Promise.all([
+    prisma.batch.findUnique({
+      where: { id },
+      include: {
+        ...batchInclude,
+        events: {
+          orderBy: { createdAt: 'asc' },
+          include: { actorUser: { select: { name: true, role: true } } },
+        },
+        documents: {
+          orderBy: { createdAt: 'asc' },
+          include: { uploadedBy: { select: { name: true, role: true } } },
+        },
       },
-    },
-  });
+    }),
+    prisma.user.findUnique({
+      where: { id: viewer.userId },
+      select: { id: true, role: true, organizationId: true, walletAddress: true },
+    }),
+  ]);
   if (!batch) {
     throw new HttpException(404, 'Batch not found', 'BATCH_NOT_FOUND');
   }
+  const canAttach =
+    !!batch.createdOnChainAt &&
+    !!user?.role &&
+    !!user.walletAddress &&
+    (user.role === 'EXPORT_MANAGER' || user.organizationId === batch.organizationId);
   return {
     ...toDto(batch),
+    nextStages: allowedNextStages(user, batch),
+    stageInFlight: !!batch.stageTx,
+    canAttach,
+    // Attached ones for everybody; one still unsigned only for whoever uploaded it.
+    documents: batch.documents
+      .filter((doc) => doc.attachedAt || doc.uploadedById === viewer.userId)
+      .map(toDocumentDto),
     events: batch.events.map((event) => ({
       stage: event.stage,
       actorAddress: event.actorAddress,
@@ -117,6 +173,115 @@ export async function getBatch(_viewer: Viewer, id: string) {
       at: event.createdAt.toISOString(),
     })),
   };
+}
+
+/**
+ * "Verified on Stellar": reads the batch from the contract and checks that
+ * every stored step (its record's hash, stage and signer) and every attached
+ * document is there, and that the stage matches.
+ */
+export async function verifyBatch(_viewer: Viewer, id: string) {
+  const batch = await prisma.batch.findUnique({
+    where: { id },
+    include: { events: { orderBy: { createdAt: 'asc' } }, documents: { where: { attachedAt: { not: null } } } },
+  });
+  if (!batch) throw new HttpException(404, 'Batch not found', 'BATCH_NOT_FOUND');
+  const chain = batch.createdOnChainAt ? await OnChainTraceabilityService.findBatch(batch.number) : null;
+
+  const steps = batch.events.map((event) => {
+    const recordMatches = sha256Canonical(event.data) === event.dataHash;
+    const onChain = !!chain?.history.some(
+      (r) => r.stage === event.stage && r.data_hash === event.dataHash && isSameAddress(r.actor, event.actorAddress)
+    );
+    return { stage: event.stage, txHash: event.txHash, recordMatches, onChain };
+  });
+  const documents = batch.documents.map((doc) => ({
+    id: doc.id,
+    sha256: doc.sha256,
+    onChain: !!chain?.documents.includes(doc.sha256),
+  }));
+  const stageMatches = !!chain && chain.stage === batch.stage;
+  const weightMatches = !chain || batch.weightGrams === null || chain.weight_grams === batch.weightGrams.toString();
+  const verified =
+    !!chain &&
+    stageMatches &&
+    weightMatches &&
+    chain.history.length === steps.length &&
+    steps.every((s) => s.recordMatches && s.onChain) &&
+    documents.every((d) => d.onChain);
+
+  return {
+    verified,
+    checkedAt: new Date().toISOString(),
+    onChain: !!chain,
+    stage: { stored: batch.stage, onChain: chain?.stage ?? null },
+    stageMatches,
+    weightMatches,
+    steps,
+    documents,
+  };
+}
+
+const CSV_STAGES: BatchStage[] = Object.values(BatchStage).filter((s) => s !== BatchStage.DELIVERED);
+
+function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const text = String(value);
+  // Quote when needed, and neutralize spreadsheet formulas.
+  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
+
+/**
+ * The batches as CSV, one row per batch with the date and transaction of each
+ * step. Only pseudonymous IDs, like the rest of the batch views.
+ */
+export async function exportBatchesCsv(viewer: Viewer, filters: BatchFilters): Promise<string> {
+  const { where } = await batchWhere(viewer, filters);
+  const batches = await prisma.batch.findMany({
+    where,
+    include: {
+      ...batchInclude,
+      events: { orderBy: { createdAt: 'asc' } },
+      _count: { select: { documents: { where: { attachedAt: { not: null } } } } },
+    },
+    orderBy: [{ deliveredAt: 'desc' }, { number: 'desc' }],
+    take: 5000,
+  });
+
+  const header = [
+    'batch_id',
+    'farmer_ref',
+    'cooperative',
+    'collection_center',
+    'stage',
+    'delivered_at',
+    'confirmed_kg',
+    'received_kg',
+    'documents',
+    'delivery_data_hash',
+    'delivery_tx',
+    ...CSV_STAGES.flatMap((s) => [`${s.toLowerCase()}_at`, `${s.toLowerCase()}_tx`]),
+  ];
+  const rows = batches.map((batch) => {
+    const dto = toDto(batch);
+    const step = (stage: BatchStage) => batch.events.find((e) => e.stage === stage);
+    return [
+      dto.number,
+      dto.farmerRef,
+      dto.organization.code,
+      dto.collectionCenter.name,
+      dto.stage,
+      dto.deliveredAt,
+      dto.confirmedKg,
+      dto.weightKg,
+      batch._count.documents,
+      dto.dataHash,
+      dto.createTx,
+      ...CSV_STAGES.flatMap((s) => [step(s)?.createdAt.toISOString(), step(s)?.txHash]),
+    ];
+  });
+  return [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 
 /** Resolves a batch the viewer may see to its number (used by the reception routes). */
@@ -187,6 +352,7 @@ export async function getSummary(_viewer: Viewer, recentLimit = 10) {
         organization: event.batch.organization,
         collectionCenter: event.batch.collectionCenter,
         estimatedKg: event.batch.estimatedKg !== null ? Number(event.batch.estimatedKg) : null,
+        confirmedKg: event.batch.deliveryProposal ? Number(event.batch.deliveryProposal.weightKg) : null,
         weightKg: event.batch.weightGrams !== null ? Number(event.batch.weightGrams) / 1000 : null,
       },
     })),

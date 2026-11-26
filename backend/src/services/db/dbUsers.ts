@@ -9,6 +9,10 @@ const USER_SELECT = {
   telegramUsername: true,
   walletAddress: true,
   walletProvider: true,
+  loginMethod: true,
+  loginIdentity: true,
+  walletApp: true,
+  lastLoginAt: true,
   isAdmin: true,
   role: true,
   organizationId: true,
@@ -26,6 +30,9 @@ export interface CreateUserEntry {
   walletAddress: string;
   walletProvider?: string | null;
   isAdmin?: boolean;
+  loginMethod?: string | null;
+  loginIdentity?: string | null;
+  walletApp?: string | null;
 }
 
 export interface UpdateUserEntry {
@@ -37,6 +44,10 @@ export interface UpdateUserEntry {
   organizationId?: string | null;
   collectionCenterId?: string | null;
   roleTx?: string | null;
+  loginMethod?: string | null;
+  loginIdentity?: string | null;
+  walletApp?: string | null;
+  lastLoginAt?: Date;
 }
 
 export class DbUsers {
@@ -54,6 +65,10 @@ export class DbUsers {
         walletAddress: data.walletAddress,
         walletProvider: data.walletProvider || 'stellar',
         isAdmin: data.isAdmin || false,
+        loginMethod: data.loginMethod ?? null,
+        loginIdentity: data.loginIdentity ?? null,
+        walletApp: data.walletApp ?? null,
+        lastLoginAt: new Date(),
       },
       select: USER_SELECT,
     });

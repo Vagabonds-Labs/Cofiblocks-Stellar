@@ -16,7 +16,7 @@
   - The Telegram Mini App with Cavos is dropped.
 - **Staff sign their own transactions** with their invisible Cavos wallet. That wallet is **funded automatically with testnet XLM** from a faucet. The backend pays the fees with fee-bump, so the user never needs XLM.
 - **SOW batch flow:**
-  1. The farmer **records their delivery** through the VoiceLedger bot. That record is immutable.
+  1. The Collector records the delivery in the web app and the farmer **confirms it** in the VoiceLedger bot; only the confirmation creates the batch (changed in the 23 November meeting: the farmer no longer dictates the delivery). That record is immutable.
   2. The Coffee Collector **adds the weight and the receipt**. These are immutable too.
   3. From then on, changes can only **advance the stage** or **attach documents**.
 - **The farm profile and practices can be edited**, by the farmer themselves through the bot, as the SOW requires. This replaces the earlier decision that only staff could edit them.
@@ -67,6 +67,7 @@ Each week ends with a **visual demo**, with real transactions on Stellar Testnet
 - [x] **SOW evidence for deliverable 2** (November 12): `npm run sow:evidence` produces the three on-chain proofs on testnet and writes [sow-evidence.md](sow-evidence.md): a farmer creates a batch (VoiceLedger API → farmer-agent wallet), a Collector records weight and receipt with their own key and our fee-bump, and two unauthorized attempts land as failed transactions with the contract's error (`#4 WRONG_ORGANIZATION`, `#13 RECEPTION_ALREADY_RECORDED`). Plus the 29 contract tests. Still to hand in to Alejandra.
 - [x] Backend side of the Collector's reception, brought forward from week 3: `ReceptionService.prepareReception` / `submitReception` (checks the signed XDR is exactly the prepared call, exactly-once with fee-bump). The HTTP endpoints and the web screen are still week 3. Migration `20261113000000_reception_tx_expiry` (to apply to Supabase).
 - [x] **Role-based home in the web app** (November 17), started from the week 3 frontend: the Collector sees the deliveries waiting at their center and records weight and receipt photo (the photo's SHA-256 goes on chain; storing the file waits for Supabase Storage); every signed-in user, with or without a role, sees the pilot summary (batches, kg received, farmers linked and with consent, per cooperative), the latest on-chain steps and every batch with filters and Stellar Expert links: the data is pseudonymous and already public on chain, so only actions are restricted by role. API: `GET /batches`, `GET /batches/summary`, `GET /batches/:id`, `POST /batches/:id/reception/prepare` and `POST /batches/:id/reception`. Checked in the browser with a test Collector against the local database, up to the wallet signature; the signed submission was checked through the API.
+- [x] **How each account signs in** (November 17): `users.login_method` (`email`, `telegram` or `wallet`), `login_identity` (the email used with Cavos), `wallet_app` and `last_login_at`, shown on the profile with a warning that each method has its own wallet, and in the admin users list. Migration `20261117000000_user_login_method` (to apply to Supabase). Cavos sessions created before it show "Telegram or email" until their next sign-in.
 
 **Week 0 decisions:**
 
@@ -328,18 +329,20 @@ What is already done is listed under [Status](#status). Still to do:
 
 **Goal:** each role does its part in the web app, and any member can view the batch history, upload documents and export CSV.
 
-- **Collector:**
-  - sees the pending deliveries of their cooperative;
-  - records the weight and uploads the receipt photo (`record_reception`, signed with their Cavos wallet).
-- **Industry Manager, Store Keeper and Export Manager:** advance the stage with a short form per stage (notes and key fields from the PDF) and an optional photo.
-- **Documents:** any role from the cooperative, or the Export Manager, uploads a file. It is stored in Storage and its hash goes on chain with `attach_document`.
+- **Collector** (done, brought forward on Nov 23):
+  - [x] records each delivery (farmer, center, weight, time); the farmer confirms it in the bot (`delivery.proposed` → `delivery.confirmation`), and can reject it; unanswered ones expire after 48 h;
+  - [x] sees the deliveries waiting for the farmer and cancels them;
+  - [x] signs the confirmed weight and the receipt photo hash (`record_reception`).
+- [x] **Industry Manager, Store Keeper and Export Manager** (November 24): advance the stage from the batch page with a short form (notes and the weight after the stage, both optional), signed with their wallet (`advance_stage`, exactly once like the reception). Their home lists the batches waiting for their role. The stage-specific fields and the photo per stage were left out (MVP): a document can be attached instead.
+- [x] **Documents** (November 24): any role from the cooperative, or the Export Manager, uploads a file (PDF, image, CSV, Excel or Word, 10 MB). It is stored in a private Supabase Storage bucket (a local folder in development) and its SHA-256 goes on chain with `attach_document`, signed by the uploader. Staff download it through the API, which checks the hash first. Migration `20261124000000_stage_and_document_tx` (to apply to Supabase).
 - **Batches:**
-  - list with filters by cooperative, center and stage;
-  - **batch page** with the timeline: who, when, documents, a link to each transaction and "Verified on Stellar".
+  - [x] list with filters by cooperative and stage, and search (center filter in the API only);
+  - [x] **batch page** with the timeline: who, when, notes, documents, a link to each transaction and "Verified on Stellar" (the backend reads the batch from the contract and compares every step, document and the stage; a record edited in the database shows "Does not match Stellar").
 - **CSV export:**
-  - batches with their history (pseudonymous IDs, no personal data);
-  - farmers with their status (staff only).
-- Notifications to VoiceLedger when the weight is recorded and on every stage change, so their bot can message the farmer.
+  - [x] batches with their history (pseudonymous IDs, no personal data): one row per batch with the date and transaction of each step, with the list's filters;
+  - [ ] farmers with their status (staff only). Optional (see [what gets cut first](#what-gets-cut-first-if-we-fall-behind)).
+- [x] Webhooks to VoiceLedger through an outbox with 24 h of retries: `delivery.proposed`, `delivery.proposal_closed`, `batch.updated` (on creation, reception and every later stage). The bot reads a farmer's batches with a signed `GET`.
+- [x] Test script `npm run batch:stages` (testnet): every stage with its role, the rejections, two documents, verification, CSV and webhooks.
 - Cavos signing: `signXdr` with our fee-bump, or `invokeContract` if `signXdr` fails.
 
 **Visual demo:** the farmer records their delivery through the VoiceLedger bot. The Collector weighs it in the web app and the farmer receives "Your batch 01-12-2026 KK-ID001 was received at Kirkir: 45 kg". The batch advances a stage, someone uploads a document and the CSV is exported.

@@ -121,3 +121,18 @@ export const deliveryCreatedSchema = z.object({
 });
 
 export type DeliveryCreatedData = z.infer<typeof deliveryCreatedSchema>;
+
+/**
+ * `delivery.confirmation`: the farmer's answer, in the bot, to a delivery the
+ * Collector recorded (`delivery.proposed`).
+ */
+export const deliveryConfirmationSchema = z.object({
+  proposal_id: z.uuid(),
+  farmer_ref: farmerRefSchema,
+  /** The farmer's explicit answer; never a default. */
+  accepted: z.boolean(),
+  answered_at: z.iso.datetime({ offset: true }),
+  ...voiceEvidence,
+});
+
+export type DeliveryConfirmationData = z.infer<typeof deliveryConfirmationSchema>;

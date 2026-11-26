@@ -211,7 +211,14 @@
     "admin_title": "Bulchiinsa",
     "admin_users_text": "Nama hundaaf gahee fi waldaa hojii gamtaa isaa ramadaa. Gaheen kontiraatii keessatti barreeffama.",
     "admin_farmers_text": "Tarree qonnaan bultoota waldaa hojii gamtaa tokkoo tokkoo olkaa'aatii galmee isaanii bot keessatti hordofaa.",
-    "open": "Bani"
+    "open": "Bani",
+    "tasks_COLLECTOR": "Galfamoota buufata keetti galmeessi, kanneen qonnaan bulaan mirkaneesse madaali.",
+    "tasks_INDUSTRY_MANAGER": "Baachiiwwan waldaa keetii dhiquu, bukeessuu fi gogsuu keessa dabarsi, sanadoota maxxansi.",
+    "tasks_STORE_KEEPER": "Kuusaa fi ergaa gara gamtaatti galmeessi.",
+    "tasks_EXPORT_MANAGER": "Baachiiwwan alergiif qopheessi, akka gurguramanitti galmeessi.",
+    "tasks_COMMITTEE_MEMBER": "Baachiiwwan waldaa keetii hordofi, fuula baachii tokkoon tokkoo irraa sanadoota maxxansi.",
+    "tasks_admin": "Fayyadamtoota, ga'eewwan fi tarree qonnaan bultootaa bulchi.",
+    "overview_title": "Ilaalcha waliigalaa pilootii"
   },
   "roles": {
     "COLLECTOR": "Walitti Qabaa Bunaa",

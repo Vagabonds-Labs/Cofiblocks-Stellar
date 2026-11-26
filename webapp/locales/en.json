@@ -211,7 +211,14 @@
     "admin_title": "Administration",
     "admin_users_text": "Assign each person their role and cooperative. The role is written to the contract.",
     "admin_farmers_text": "Upload the farmer list of each cooperative and follow their registration in the bot.",
-    "open": "Open"
+    "open": "Open",
+    "tasks_COLLECTOR": "Record the deliveries at your center and weigh the ones the farmer confirmed.",
+    "tasks_INDUSTRY_MANAGER": "Move your cooperative's batches through washing, fermentation and drying, and attach documents.",
+    "tasks_STORE_KEEPER": "Record storage and the shipment to the union.",
+    "tasks_EXPORT_MANAGER": "Prepare batches for export and record them as sold.",
+    "tasks_COMMITTEE_MEMBER": "Follow your cooperative's batches and attach documents from each batch page.",
+    "tasks_admin": "Manage users, roles and the farmer lists.",
+    "overview_title": "Pilot overview"
   },
   "roles": {
     "COLLECTOR": "Coffee Collector",

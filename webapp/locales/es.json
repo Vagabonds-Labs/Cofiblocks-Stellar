@@ -211,7 +211,14 @@
     "admin_title": "Administración",
     "admin_users_text": "Asigna a cada persona su rol y cooperativa. El rol se escribe en el contrato.",
     "admin_farmers_text": "Sube la lista de caficultores de cada cooperativa y sigue su registro en el bot.",
-    "open": "Abrir"
+    "open": "Abrir",
+    "tasks_COLLECTOR": "Registra las entregas en tu centro y pesa las que el caficultor confirmó.",
+    "tasks_INDUSTRY_MANAGER": "Pasa los lotes de tu cooperativa por lavado, fermentación y secado, y adjunta documentos.",
+    "tasks_STORE_KEEPER": "Registra el almacenamiento y el envío a la unión.",
+    "tasks_EXPORT_MANAGER": "Prepara los lotes para exportar y regístralos como vendidos.",
+    "tasks_COMMITTEE_MEMBER": "Sigue los lotes de tu cooperativa y adjunta documentos desde la página de cada lote.",
+    "tasks_admin": "Administra usuarios, roles y las listas de caficultores.",
+    "overview_title": "Panorama del piloto"
   },
   "roles": {
     "COLLECTOR": "Coffee Collector",

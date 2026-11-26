@@ -162,12 +162,95 @@ function StaffHome({ user }: { user: User }) {
     heading?.focus({ preventScroll: true })
   }
 
+  const processRole =
+    user.role === 'INDUSTRY_MANAGER' ||
+    user.role === 'STORE_KEEPER' ||
+    user.role === 'EXPORT_MANAGER'
+  const place = [user.organization?.name, user.collectionCenter?.name]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
-    <main className="app-page app-container space-y-8 py-8 sm:py-10">
-      <header className="flex flex-wrap items-end justify-between gap-5">
-        <div className="max-w-2xl">
+    <main className="app-page app-container space-y-10 py-8 sm:py-10">
+      {/* What this person has to do comes first, apart from the overview. */}
+      <section
+        aria-labelledby="tasks-title"
+        className="rounded-3xl border border-[#cddbc9] bg-[#eef4ec] p-4 shadow-sm sm:p-6"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[#526749]">
+              {user.name
+                ? t('home.greeting', { name: user.name })
+                : t('home.greeting_anonymous')}
+            </p>
+            <h2
+              id="tasks-title"
+              className="mt-1 text-2xl font-bold tracking-tight text-[#2d432e]"
+            >
+              {t('home.tasks_title')}
+            </h2>
+            {user.role ? (
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[#4c5a52]">
+                <span className="chip bg-white text-[#2d432e]">
+                  {t(`roles.${user.role}`)}
+                </span>
+                {place && <span>{place}</span>}
+              </p>
+            ) : null}
+            <p className="mt-2 max-w-2xl text-sm text-[#4c5a52]">
+              {user.role
+                ? t(`home.tasks_${user.role}`)
+                : user.isAdmin
+                  ? t('home.tasks_admin')
+                  : t('home.no_role_text')}
+            </p>
+          </div>
+          {user.isAdmin && (
+            <nav
+              aria-label={t('home.admin_title')}
+              className="flex flex-wrap gap-2"
+            >
+              <AdminLink
+                href={`/${locale}/admin/farmers`}
+                icon={UserGroupIcon}
+                title={t('user_menu.manage_farmers')}
+              />
+              <AdminLink
+                href={`/${locale}/admin/users`}
+                icon={ShieldCheckIcon}
+                title={t('user_menu.manage_users')}
+              />
+            </nav>
+          )}
+        </div>
+
+        {(user.role === 'COLLECTOR' || processRole) && (
+          <div className="mt-5 space-y-5">
+            {user.role === 'COLLECTOR' && (
+              <>
+                <PendingDeliveries
+                  collectionCenterId={user.collectionCenterId ?? null}
+                  refreshKey={refreshKey}
+                  onRecorded={refresh}
+                />
+                <RecordedDeliveries
+                  organizationId={user.organizationId ?? null}
+                  collectionCenterId={user.collectionCenterId ?? null}
+                  refreshKey={refreshKey}
+                  onConfirmed={refresh}
+                />
+              </>
+            )}
+            {processRole && <MyBatches refreshKey={refreshKey} />}
+          </div>
+        )}
+      </section>
+
+      <div className="space-y-8 border-t border-[#dfe6e0] pt-10">
+        <header className="max-w-2xl">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#71815d]">
-            {t('home.eyebrow')}
+            {t('home.overview_title')}
           </p>
           <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-[#2d432e] sm:text-4xl">
             {t('dashboard.title')}
@@ -175,58 +258,21 @@ function StaffHome({ user }: { user: User }) {
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#68756a]">
             {t('dashboard.subtitle')}
           </p>
-        </div>
-        {user.isAdmin && (
-          <nav
-            aria-label={t('home.admin_title')}
-            className="flex flex-wrap gap-2"
-          >
-            <AdminLink
-              href={`/${locale}/admin/farmers`}
-              icon={UserGroupIcon}
-              title={t('user_menu.manage_farmers')}
-            />
-            <AdminLink
-              href={`/${locale}/admin/users`}
-              icon={ShieldCheckIcon}
-              title={t('user_menu.manage_users')}
-            />
-          </nav>
-        )}
-      </header>
+        </header>
 
-      <PilotSummary
-        refreshKey={refreshKey}
-        ownCoopId={ownCoopId}
-        selectedCoopId={selectedCoopId}
-        onSelectCooperative={exploreCooperative}
-      />
+        <PilotSummary
+          refreshKey={refreshKey}
+          ownCoopId={ownCoopId}
+          selectedCoopId={selectedCoopId}
+          onSelectCooperative={exploreCooperative}
+        />
 
-      {user.role === 'COLLECTOR' && (
-        <>
-          <RecordedDeliveries
-            organizationId={user.organizationId ?? null}
-            collectionCenterId={user.collectionCenterId ?? null}
-            refreshKey={refreshKey}
-            onConfirmed={refresh}
-          />
-          <PendingDeliveries
-            collectionCenterId={user.collectionCenterId ?? null}
-            refreshKey={refreshKey}
-            onRecorded={refresh}
-          />
-        </>
-      )}
-
-      {(user.role === 'INDUSTRY_MANAGER' ||
-        user.role === 'STORE_KEEPER' ||
-        user.role === 'EXPORT_MANAGER') && <MyBatches refreshKey={refreshKey} />}
-
-      <BatchesSection
-        refreshKey={refreshKey}
-        cooperativeId={selectedCoopId}
-        onCooperativeChange={setSelectedCoopId}
-      />
+        <BatchesSection
+          refreshKey={refreshKey}
+          cooperativeId={selectedCoopId}
+          onCooperativeChange={setSelectedCoopId}
+        />
+      </div>
     </main>
   )
 }

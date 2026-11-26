@@ -75,7 +75,8 @@ function getDriver(): Driver {
   if (driver) return driver;
   const { SUPABASE_URL, SUPABASE_SECRET_KEY } = process.env;
   if (SUPABASE_URL && SUPABASE_SECRET_KEY) {
-    driver = supabaseDriver(SUPABASE_URL, SUPABASE_SECRET_KEY);
+    // The project URL; the dashboard also shows the REST one (`…/rest/v1/`).
+    driver = supabaseDriver(SUPABASE_URL.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, ''), SUPABASE_SECRET_KEY);
   } else if (process.env.NODE_ENV === 'production') {
     throw new HttpException(500, 'Document storage is not configured', 'STORAGE_NOT_CONFIGURED');
   } else {

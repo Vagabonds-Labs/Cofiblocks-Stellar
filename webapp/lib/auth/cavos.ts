@@ -25,7 +25,7 @@ export const cavosConfig: CavosConfig = {
 
 /**
  * Length of the sign-in code Cavos emails. The kit does not export it from its
- * public entry points; it is `EMAIL_CODE_LENGTH` in `@cavos/kit` 0.5.2.
+ * public entry points; it is `EMAIL_CODE_LENGTH` in `@cavos/kit` 0.6.1.
  */
 export const CAVOS_EMAIL_CODE_LENGTH = 9
 

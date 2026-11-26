@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@cavos/kit": "0.5.2",
+    "@cavos/kit": "0.6.1",
     "@creit.tech/stellar-wallets-kit": "^2.6.0",
     "@heroicons/react": "^2.1.1",
     "@stellar/stellar-sdk": "^17.0.1",
